@@ -1,0 +1,6 @@
+{
+  "name": "Nuvvo",
+  "description": "Premium Swiggy-inspired full-stack food delivery ecosystem with live map tracking, secure roles, OTP login, and full admin panels.",
+  "requestFramePermissions": ["geolocation", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;800&display=swap');
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-orange-500: #FC8019;
+  --color-orange-600: #e37316;
+  --color-orange-700: #cb610d;
+  --color-orange-400: #ff9a44;
+  --color-orange-100: #ffe9d6;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  background-color: #f8fafc;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Fallback / Custom theme styling */
+.orange-gradient {
+  background: linear-gradient(135deg, #FC8019 0%, #ff9a44 100%);
+}
+
+.veg-icon {
+  border: 1px solid #60b246;
+  background: white;
+  padding: 2px;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+}
+.veg-dot {
+  width: 6px;
+  height: 6px;
+  background: #60b246;
+  border-radius: 50%;
+  display: block;
+}
+
+.nonveg-icon {
+  border: 1px solid #e43b4f;
+  background: white;
+  padding: 2px;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+}
+.nonveg-dot {
+  width: 6px;
+  height: 6px;
+  background: #e43b4f;
+  border-radius: 50%;
+  display: block;
+}
+
+/* Hide scrollbars but keep swipe actions alive */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Slide up details animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Shimmer gradient animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+
+.dark .shimmer-bg {
+  background: linear-gradient(90deg, #27272a 25%, #3f3f46 37%, #27272a 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+
