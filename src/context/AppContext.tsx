@@ -9,10 +9,10 @@ import {
   DeliveryPartnerProfile, FranchiseApplication, Address, Coupon, AuditLog,
   AppNotification, Banner, PointsTransaction, RestaurantReview, ScheduledNotification,
   RiderEarningRecord, RiderPayout, SimulatedEmail, MerchantPayout, AppTheme,
-  DesignatedAdmin, AdminPermissions
+  DesignatedAdmin, AdminPermissions, PaymentMethodType
 } from '../types';
 import { FOOD_CATALOG, RESTAURANTS, MOCK_COUPONS } from '../data/catalog';
-import { generatePreloadedChiralaRestaurants } from '../data/chiralaPartners';
+import { generatePreloadedChiralaRestaurants, CHIRALA_TOP13_FOOD_ITEMS } from '../data/chiralaPartners';
 import { APP_THEMES } from '../data/themes';
 
 function safeParse<T>(key: string, fallback: T): T {
@@ -98,7 +98,7 @@ interface AppContextProps {
 
   // Orders
   orders: Order[];
-  createNewOrder: (paymentMethod: 'PhonePe' | 'UPI' | 'COD', phonePeNo?: string, scheduledTime?: string) => Order | null;
+  createNewOrder: (paymentMethod?: PaymentMethodType | string, phonePeNoOrDetails?: any, scheduledTime?: string) => Order | null;
   reorderItems: (order: Order) => void;
   changeOrderStatus: (orderId: string, status: OrderStatus, isSystemSimulation?: boolean) => void;
   submitOrderRating: (orderId: string, rating: number, feedback?: string) => void;
@@ -183,8 +183,17 @@ interface AppContextProps {
   registerNewRestaurantRequest: (name: string, cuisines: string[], costForTwo: number, phone: string, businessType: any, image?: string) => { success: boolean; id: string };
 
 
-  // Support
+  // Support & WhatsApp Food Bookings
   clickToWhatsAppSupport: (message: string) => void;
+  clickToWhatsAppFoodBooking: (details: {
+    restaurantName?: string;
+    items?: Array<{ name: string; quantity: number; price: number }>;
+    totalAmount?: number;
+    deliveryAddress?: string;
+    customerName?: string;
+    customerPhone?: string;
+    customNote?: string;
+  } | string) => void;
 
   // Dynamic Banner Management & Click Action System
   banners: Banner[];
@@ -389,7 +398,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [otpCode, setOtpCode] = useState<string>('5555'); // Default simulated auto-filled OTP
 
   const checkSuperAdminPermission = (actionName: string): boolean => {
-    if (user?.phone !== '8328355812') {
+    if (user?.phone !== '9063692135' && user?.phone !== '8328355812') {
       alert(`Access Denied: Only Super Admin has authority to perform: "${actionName}".`);
       return false;
     }
@@ -792,9 +801,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Admin and Super Admin
   const [isSuperAdminAuthenticated, setSuperAdminAuthenticated] = useState<boolean>(false);
-  const isSuperAdmin = user?.phone === '8328355812' || user?.role === 'Super Admin';
+  const isSuperAdmin = user?.phone === '9063692135' || user?.phone === '8328355812' || user?.role === 'Super Admin';
   const [designatedAdmins, setDesignatedAdmins] = useState<DesignatedAdmin[]>(() => {
     return safeParse<DesignatedAdmin[]>('nuvvo_designated_admins', [
+      {
+        id: 'admin_master',
+        name: 'Master Admin',
+        phone: '9063692135',
+        email: 'admin@nuvvo.cloud',
+        role: 'Master Admin / Owner',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        joinedAt: '2026-01-01T00:00:00Z',
+        permissions: {
+          canDeleteRestaurants: true,
+          canProcessRefunds: true,
+          canEditFoodItems: true,
+          canManageCoupons: true,
+          canBroadcastCampaigns: true,
+          canApproveFranchise: true,
+          canOnboardRiders: true,
+        }
+      },
       {
         id: 'admin_rajesh',
         name: 'Rajesh Kumar',
@@ -1433,7 +1460,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Food Catalog State
   const [foodCatalogList, setFoodCatalogList] = useState<FoodItem[]>(() => {
-    return safeParse<FoodItem[]>('nuvvo_food_catalog', FOOD_CATALOG);
+    const base = safeParse<FoodItem[]>('nuvvo_food_catalog', FOOD_CATALOG);
+    // Guarantee that the 13 priority Chirala restaurant dishes are merged into the catalog
+    const existingIds = new Set(base.map(f => f.id));
+    const missingChirala = CHIRALA_TOP13_FOOD_ITEMS.filter(f => !existingIds.has(f.id));
+    return [...missingChirala, ...base];
   });
 
   useEffect(() => {
@@ -1464,9 +1495,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Search query
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Restaurants State (loaded from localStorage or initialized with 90 preloaded partners)
+  // Restaurants State (guaranteeing the 13 priority Chirala spots at top)
   const [restaurantsList, setRestaurantsList] = useState<Restaurant[]>(() => {
     let pool: Restaurant[] = [];
+    const chiralaList = generatePreloadedChiralaRestaurants();
     const stored = localStorage.getItem('nuvvo_restaurants');
     if (stored) {
       try {
@@ -1475,13 +1507,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         pool = [];
       }
     }
-    if (pool.length === 0) {
-      const chiralaList = generatePreloadedChiralaRestaurants();
-      pool = [...RESTAURANTS, ...chiralaList];
+
+    // Always ensure the 13 priority Chirala spots are present, fresh, and pinned at the top
+    const priorityChirala = chiralaList.slice(0, 13);
+    const priorityIds = new Set(priorityChirala.map(p => p.id));
+    const priorityNames = new Set(priorityChirala.map(p => p.name.toLowerCase()));
+    
+    // Filter out older duplicates
+    const remainingPool = pool.filter(r => !priorityIds.has(r.id) && !priorityNames.has(r.name.toLowerCase()));
+    
+    if (remainingPool.length === 0) {
+      const otherChirala = chiralaList.slice(13);
+      pool = [...priorityChirala, ...RESTAURANTS, ...otherChirala];
+    } else {
+      pool = [...priorityChirala, ...remainingPool];
     }
+
     // Set scheduling parameters if missing
     return pool.map(r => ({
       ...r,
+      phone: r.phone || '9063692135',
       openingTime: r.openingTime || '09:00',
       closingTime: r.closingTime || '23:00',
       weeklySchedule: r.weeklySchedule || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
@@ -1867,8 +1912,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     let resolvedRole: any = 'Customer';
-    // Strict exclusive Super Admin hook based strictly on user requirement
-    if (phone === '8328355812') {
+    // Strict exclusive Super Admin / Admin hook based strictly on user requirement
+    if (phone === '9063692135' || phone === '8328355812') {
       resolvedRole = 'Super Admin';
     } else if (role === 'Delivery Partner') {
       resolvedRole = 'Delivery Partner';
@@ -2090,7 +2135,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Create New Order
-  const createNewOrder = (paymentMethod: 'PhonePe' | 'UPI' | 'COD', phonePeNo?: string, scheduledTime?: string): Order | null => {
+  const createNewOrder = (
+    paymentMethod: PaymentMethodType | string = 'UPI', 
+    phonePeNoOrDetails?: any, 
+    scheduledTime?: string
+  ): Order | null => {
     if (!user || cart.length === 0 || !currentAddress) return null;
 
     const subtotal = cart.reduce((sum, item) => sum + (item.foodItem.discountPrice || item.foodItem.price) * item.quantity, 0);
@@ -2120,6 +2169,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const orderId = `order_${Date.now()}`;
     const earnedPoints = Math.round(subtotal / 10); // Earning 1 loyalty point per 10 rupees spent
 
+    const isPhonePeStr = typeof phonePeNoOrDetails === 'string';
+    const paymentDetailsObj = typeof phonePeNoOrDetails === 'object' ? phonePeNoOrDetails : undefined;
+    const maskedOrPhone = isPhonePeStr ? phonePeNoOrDetails : (paymentDetailsObj?.maskedInfo || paymentDetailsObj?.provider || undefined);
+
     const newOrder: Order = {
       id: orderId,
       customerId: user.id,
@@ -2139,7 +2192,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       couponUsed: appliedCoupon?.code,
       paymentMethod,
       paymentStatus: 'success', // Auto success for direct demo playability
-      phonePeNumber: phonePeNo,
+      phonePeNumber: maskedOrPhone,
+      paymentDetails: paymentDetailsObj,
       date: new Date().toISOString(),
       eta: 25,
       trackingHistory: [
@@ -2149,6 +2203,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       pointsEarned: earnedPoints,
       pointsRedeemed: pointsToRedeem > 0 ? pointsToRedeem : undefined
     };
+
+    // If payment was completed using Nuvvo Wallet, deduct and log
+    if (paymentMethod === 'Wallet' || (paymentMethod as string).toLowerCase().includes('wallet')) {
+      try {
+        const storedWalletBal = localStorage.getItem('nuvvo_wallet_balance');
+        const currentBal = storedWalletBal ? Number(storedWalletBal) : 500;
+        const newBal = Math.max(0, currentBal - finalAmount);
+        localStorage.setItem('nuvvo_wallet_balance', newBal.toString());
+
+        const storedWalletHistory = localStorage.getItem('nuvvo_wallet_history');
+        const historyList = storedWalletHistory ? JSON.parse(storedWalletHistory) : [];
+        const walletDebitTx = {
+          id: `w_tx_${Date.now()}`,
+          type: 'debit',
+          amount: finalAmount,
+          description: `Paid for Order #${orderId.slice(-6).toUpperCase()}`,
+          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        };
+        localStorage.setItem('nuvvo_wallet_history', JSON.stringify([walletDebitTx, ...historyList]));
+      } catch (err) {
+        console.warn('Error syncing wallet debit:', err);
+      }
+    }
 
     // Loyalty Ledger points adjustments
     let nextPoints = nuvvoPoints;
@@ -3227,7 +3304,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleDeliveryPartnerAvailability = (id: string) => {
-    if (user?.phone !== '8328355812' && deliveryPartner?.id !== id) {
+    if (user?.phone !== '9063692135' && user?.phone !== '8328355812' && deliveryPartner?.id !== id) {
       if (!checkSuperAdminPermission('Toggle Delivery Partner Availability')) return;
     }
     setDeliveryPartners(prev => {
@@ -3374,10 +3451,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Live support Click to WhatsApp Redirection
   const clickToWhatsAppSupport = (message: string) => {
-    const targetNo = '8328355812';
+    const targetNo = '9063692135';
     const escapedText = encodeURIComponent(`[Nuvvo Support Alert] ${message}`);
     const whatsappUrl = `https://wa.me/${targetNo}?text=${escapedText}`;
     addAuditLog('WhatsApp Hook Called', `Redirected query token to Nuvvo Helpline: ${targetNo}`);
+    window.open(whatsappUrl, '_blank');
+  };
+
+  // Food Booking / Orders WhatsApp Redirection
+  const clickToWhatsAppFoodBooking = (details: {
+    restaurantName?: string;
+    items?: Array<{ name: string; quantity: number; price: number }>;
+    totalAmount?: number;
+    deliveryAddress?: string;
+    customerName?: string;
+    customerPhone?: string;
+    customNote?: string;
+  } | string) => {
+    const targetNo = '9063692135';
+    let messageText = '';
+
+    if (typeof details === 'string') {
+      messageText = `[Nuvvo Food Booking & Inquiry]\n${details}`;
+    } else {
+      const parts = [
+        '🍽️ *NUVVO FOOD BOOKING & ORDER*',
+        details.restaurantName ? `📍 *Restaurant:* ${details.restaurantName}` : '',
+        details.items && details.items.length > 0 ? '📋 *Selected Dishes / Items:*' : '',
+        ...(details.items?.map(it => `  • ${it.name} x ${it.quantity} (₹${it.price * it.quantity})`) || []),
+        details.totalAmount ? `💰 *Estimated Total:* ₹${details.totalAmount}` : '',
+        details.deliveryAddress ? `🏠 *Delivery Destination:* ${details.deliveryAddress}` : '',
+        details.customerName ? `👤 *Customer Name:* ${details.customerName}` : '',
+        details.customerPhone ? `📞 *Customer Contact:* +91 ${details.customerPhone}` : '',
+        details.customNote ? `📝 *Special Requests:* ${details.customNote}` : '',
+        '',
+        '⚡ Kindly confirm my food booking / order availability. Thank you!'
+      ].filter(line => line !== undefined);
+      messageText = parts.filter(Boolean).join('\n');
+    }
+
+    const escapedText = encodeURIComponent(messageText);
+    const whatsappUrl = `https://wa.me/${targetNo}?text=${escapedText}`;
+    addAuditLog('WhatsApp Food Booking', `Redirected food booking inquiry to WhatsApp: ${targetNo}`);
     window.open(whatsappUrl, '_blank');
   };
 
@@ -3513,7 +3628,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logs, addAuditLog, clearLogs,
       designatedAdmins, toggleAdminPermission, addDesignatedAdmin, deleteDesignatedAdmin,
       toggleRestaurantActiveStatus, approveRestaurant, registerNewRestaurantRequest,
-      clickToWhatsAppSupport,
+      clickToWhatsAppSupport, clickToWhatsAppFoodBooking,
 
       // Dynamic Banner System
       banners, addBanner, updateBanner, deleteBanner, enableBanner, reorderBanners,

@@ -165,7 +165,7 @@ export default function DesktopSupportWidgets() {
           
           {/* Tooltip */}
           <span className="absolute right-14 bg-zinc-900 text-white text-[10px] font-black px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap tracking-wide uppercase pointer-events-none shadow-md">
-            WhatsApp Support (8328355812)
+            WhatsApp Food Bookings & Support (9063692135)
           </span>
         </button>
 
@@ -307,10 +307,10 @@ export default function DesktopSupportWidgets() {
             <div className="px-4 py-2 bg-emerald-500/10 dark:bg-emerald-500/5 border-t border-b border-emerald-500/20 flex items-center justify-between text-[9.5px] text-zinc-650 dark:text-zinc-400">
               <span className="flex items-center gap-1 font-medium">
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" />
-                Need human assistance immediately?
+                WhatsApp Food Bookings & Support (9063692135)
               </span>
               <button
-                onClick={() => clickToWhatsAppSupport('Urgent Callback Request!')}
+                onClick={() => clickToWhatsAppSupport('Food Booking / Support Assistance Request!')}
                 className="text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-0.5 hover:underline cursor-pointer"
               >
                 Chat on WhatsApp ↗

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useApp } from './context/AppContext';
 import { Bell, X, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -14,26 +14,40 @@ import BottomNav from './components/BottomNav';
 import FoodDetails from './components/FoodDetails';
 import FavoritesScreen from './components/FavoritesScreen';
 import CartScreen from './components/CartScreen';
-import TrackingScreen from './components/TrackingScreen';
-import PartnerScreen from './components/PartnerScreen';
-import FranchiseScreen from './components/FranchiseScreen';
 import AccountScreen from './components/AccountScreen';
-import AdminPanel from './components/AdminPanel';
-import SuperAdminPanel from './components/SuperAdminPanel';
 import DeliveryOptionsScreen from './components/DeliveryOptionsScreen';
 import DesktopSupportWidgets from './components/DesktopSupportWidgets';
+
+// Code-split heavy secondary screens to speed up initial bundle load
+const TrackingScreen = lazy(() => import('./components/TrackingScreen'));
+const PartnerScreen = lazy(() => import('./components/PartnerScreen'));
+const FranchiseScreen = lazy(() => import('./components/FranchiseScreen'));
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+const SuperAdminPanel = lazy(() => import('./components/SuperAdminPanel'));
 
 export default function App() {
   const { user, currentPage, selectedFoodItem, notifications, markNotificationAsRead, setCurrentPage, isOffline, cartSuccessAnimation } = useApp();
   const [activeToast, setActiveToast] = useState<any>(null);
-  const [showSplash, setShowSplash] = useState(true);
+  
+  // Fast splash screen: skip if already seen this session, else quick 650ms intro
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      return !sessionStorage.getItem('nuvvo_splash_seen');
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
+    if (!showSplash) return;
+    try {
+      sessionStorage.setItem('nuvvo_splash_seen', 'true');
+    } catch {}
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 2400);
+    }, 650);
     return () => clearTimeout(timer);
-  }, []);
+  }, [showSplash]);
 
   useEffect(() => {
     if (notifications && notifications.length > 0) {

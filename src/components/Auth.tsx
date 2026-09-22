@@ -210,11 +210,14 @@ export default function Auth() {
                   </button>
                   <button 
                     type="button" 
-                    onClick={() => prefillTestNumber('8328355812', 'Super Admin')}
+                    onClick={() => prefillTestNumber('9063692135', 'Super Admin')}
                     className="p-2.5 bg-orange-50 dark:bg-zinc-800 hover:bg-orange-100 border border-orange-100 dark:border-zinc-700 text-orange-600 dark:text-amber-400 rounded-xl font-semibold text-left flex items-center justify-between"
                   >
-                    <span>Super Admin Cell</span>
-                    <span className="text-[10px] bg-orange-100 dark:bg-zinc-700 px-1.5 py-0.5 rounded text-orange-500">Owner</span>
+                    <div>
+                      <span className="block font-bold">Admin Cell</span>
+                      <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">9063692135</span>
+                    </div>
+                    <span className="text-[10px] bg-orange-100 dark:bg-zinc-700 px-1.5 py-0.5 rounded text-orange-500 font-bold">Admin</span>
                   </button>
                 </div>
               </div>

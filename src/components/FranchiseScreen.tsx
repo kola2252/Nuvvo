@@ -378,7 +378,7 @@ export default function FranchiseScreen() {
             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between">
               <div>
                 <strong className="text-emerald-700 dark:text-emerald-400 block text-[10px] uppercase">Corporate Desk</strong>
-                <p className="text-[9px] text-zinc-500">Fast escalation support cell 8328355812</p>
+                <p className="text-[9px] text-zinc-500">Fast escalation support cell 9063692135</p>
               </div>
               <button 
                 onClick={() => triggerWhatsApp(`Franchise Partner Account: support ticket escalated on region ${activeFranchiseApp.city}`)}
@@ -573,7 +573,7 @@ export default function FranchiseScreen() {
           <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-3xl space-y-3.5 text-left text-emerald-800 dark:text-emerald-400">
             <div className="flex items-center gap-2">
               <Phone className="w-5 h-5 text-emerald-500" />
-              <strong className="text-xs uppercase tracking-wide">Direct WhatsApp Business Helpline: 8328355812</strong>
+              <strong className="text-xs uppercase tracking-wide">Direct WhatsApp Business Helpline: 9063692135</strong>
             </div>
             
             <p className="text-[10px] leading-relaxed text-zinc-650 dark:text-zinc-350">
@@ -706,7 +706,7 @@ export default function FranchiseScreen() {
                         type="tel" 
                         required 
                         disabled={isOtpVerified}
-                        placeholder="e.g. 8328355812" 
+                        placeholder="e.g. 9063692135" 
                         value={mobileNumber}
                         onChange={e => setMobileNumber(e.target.value)}
                         className="flex-1 bg-slate-50 dark:bg-zinc-800 p-2 rounded-xl border text-xs font-mono"
@@ -728,7 +728,7 @@ export default function FranchiseScreen() {
                     <input 
                       type="tel" 
                       required 
-                      placeholder="e.g. 8328355812" 
+                      placeholder="e.g. 9063692135" 
                       value={whatsAppNumber}
                       onChange={e => setWhatsAppNumber(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-zinc-800 p-2 rounded-xl border text-xs font-mono"

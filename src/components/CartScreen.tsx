@@ -9,10 +9,12 @@ import { motion } from 'motion/react';
 import { 
   ShoppingBag, Trash2, Plus, Minus, Tag, Check, ArrowRight, MapPin, 
   Wallet, FileText, ChevronRight, ChevronLeft, X, PhoneCall, AlertTriangle, Coins, Sparkles,
-  Calendar, Clock, PlusCircle, RefreshCw, Camera, Award
+  Calendar, Clock, PlusCircle, RefreshCw, Camera, Award, CreditCard
 } from 'lucide-react';
 import AddressSelectorModal from './AddressSelectorModal';
 import QRCodeScannerModal from './QRCodeScannerModal';
+import PaymentMethodScreen from './PaymentMethodScreen';
+import { PaymentMethodType } from '../types';
 
 export default function CartScreen() {
   const { 
@@ -23,9 +25,11 @@ export default function CartScreen() {
     createNewOrder, setActiveTrackingOrder, setCurrentPage, setSelectedFoodItem,
     user, validateDeliveryLocation,
     nuvvoPoints, pointsToRedeem, redeemPointsForDiscount, cancelPointsRedemption,
+    restaurants, clickToWhatsAppFoodBooking,
     pageHistory, goBack, closePage
   } = useApp();
 
+  const [checkoutStep, setCheckoutStep] = useState<'cart' | 'payment'>('cart');
   const [showAddrModal, setShowAddrModal] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [couponInput, setCouponInput] = useState('');
@@ -34,8 +38,15 @@ export default function CartScreen() {
   const [pointsInput, setPointsInput] = useState('');
   const [pointsError, setPointsError] = useState('');
   const [showCouponsDialog, setShowCouponsDialog] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'PhonePe' | 'UPI' | 'COD'>('PhonePe');
-  const [phonePeNumber, setPhonePeNumber] = useState('7702906994');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('UPI');
+  const [lastPaymentDetails, setLastPaymentDetails] = useState<any>(null);
+  const [phonePeNumber, setPhonePeNumber] = useState(() => {
+    try {
+      return localStorage.getItem('nuvvo_googlepay_number') || '7702906994';
+    } catch {
+      return '7702906994';
+    }
+  });
   
   // Custom tipping state
   const [showCustomTip, setShowCustomTip] = useState(false);
@@ -59,11 +70,18 @@ export default function CartScreen() {
 
   const savedUPIs = (() => {
     if (!user) return [];
+    const activeGPayNum = (() => {
+      try {
+        return localStorage.getItem('nuvvo_googlepay_number') || '7702906994';
+      } catch {
+        return '7702906994';
+      }
+    })();
     try {
       const stored = localStorage.getItem(`nuvvo_upis_${user.phone}`);
       return stored ? JSON.parse(stored) : [
-        { id: 'upi_demo_1', name: 'Personal GPay', upiId: `${user.phone}@okaxis`, provider: 'GPAY' },
-        { id: 'upi_demo_2', name: 'PhonePe Secondary', upiId: `${user.phone}@ybl`, provider: 'PHONEPE' }
+        { id: 'upi_demo_1', name: 'Google Pay Primary', upiId: `${activeGPayNum}@okhdfcbank`, provider: 'GPAY' },
+        { id: 'upi_demo_2', name: 'PhonePe Secondary', upiId: `${activeGPayNum}@ybl`, provider: 'PHONEPE' }
       ];
     } catch {
       return [];
@@ -271,6 +289,40 @@ export default function CartScreen() {
     }
   };
 
+  const handleExecuteOrderWithPayment = (method: PaymentMethodType, paymentDetails?: any) => {
+    if (cart.length === 0) return;
+    if (!currentAddress) {
+      alert('Kindly configure or select a valid delivery address in your Profile or Cart.');
+      setCheckoutStep('cart');
+      return;
+    }
+
+    if (currentAddress.gpsCoordinates) {
+      const isValid = validateDeliveryLocation(currentAddress.gpsCoordinates.lat, currentAddress.gpsCoordinates.lng);
+      if (!isValid) {
+        alert('Sorry, delivery is currently unavailable for this location. Please adjust your delivery pin closer to active operational sectors.');
+        setCheckoutStep('cart');
+        return;
+      }
+    }
+
+    const scheduledVal = scheduleMode === 'SCHEDULED' ? getScheduledTimeString() : undefined;
+    setPaymentMethod(method);
+    setLastPaymentDetails(paymentDetails);
+
+    const created = createNewOrder(
+      method, 
+      paymentDetails || (method === 'PhonePe' ? phonePeNumber : undefined),
+      scheduledVal
+    );
+
+    if (created) {
+      setTimeout(() => {
+        setCurrentPage('tracking'); // Redirect smoothly to real-time live map simulation
+      }, 400);
+    }
+  };
+
   if (cart.length === 0) {
     return (
       <motion.div 
@@ -292,6 +344,29 @@ export default function CartScreen() {
           Check out the Dishes Menu
         </button>
       </motion.div>
+    );
+  }
+
+  // Dedicated Payment Method Selection Step
+  if (checkoutStep === 'payment') {
+    return (
+      <PaymentMethodScreen
+        amountPayable={finalAmount}
+        deliveryAddress={currentAddress}
+        itemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+        subtotal={subtotal}
+        discount={discount + pointsDiscount}
+        deliveryFee={deliveryFee}
+        packagingFee={packagingFee}
+        tax={tax}
+        tip={deliveryPartnerTip}
+        userPhone={user?.phone}
+        userName={user?.name}
+        onBack={() => setCheckoutStep('cart')}
+        onCompletePayment={(method, details) => {
+          handleExecuteOrderWithPayment(method, details);
+        }}
+      />
     );
   }
 
@@ -987,137 +1062,111 @@ export default function CartScreen() {
           );
         })()}
 
-        {/* PAYMENT INTEGRATION CARD */}
+        {/* PAYMENT METHOD PREVIEW & SELECTION CARD */}
         <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-3xl p-4 shadow-sm space-y-3">
-          <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Integrated Payment Channels</p>
-          
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'PhonePe', label: 'PhonePe', icon: '📱' },
-              { id: 'UPI', label: 'UPI QR', icon: '💸' },
-              { id: 'COD', label: 'Cash / COD', icon: '🤝' }
-            ].map(ch => (
-              <button
-                key={ch.id}
-                onClick={() => setPaymentMethod(ch.id as any)}
-                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
-                  paymentMethod === ch.id 
-                    ? 'bg-orange-500/10 text-orange-600 border-orange-500 shadow-sm'
-                    : 'bg-slate-50 dark:bg-zinc-800 text-zinc-750 dark:text-zinc-300 border-slate-200 dark:border-zinc-700 hover:bg-slate-100'
-                }`}
-              >
-                <span className="text-lg">{ch.icon}</span>
-                <span className="text-[9px] font-black uppercase mt-1 tracking-tight">{ch.label}</span>
-              </button>
-            ))}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide flex items-center gap-1.5">
+              <CreditCard className="w-4 h-4 text-orange-500" /> Payment Selection
+            </span>
+            <button
+              id="change-payment-method-btn"
+              type="button"
+              onClick={() => setCheckoutStep('payment')}
+              className="text-[11px] font-extrabold text-orange-500 hover:text-orange-600 transition cursor-pointer flex items-center gap-0.5"
+            >
+              <span>Change / Choose</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          {paymentMethod === 'PhonePe' && (
-            <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="space-y-3 mt-2 p-3 bg-slate-50 dark:bg-zinc-850 rounded-2xl border border-slate-150/75 text-left">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Linked Account PhonePe No</label>
-                <input 
-                  type="tel"
-                  value={phonePeNumber}
-                  onChange={e => setPhonePeNumber(e.target.value)}
-                  maxLength={10}
-                  className="w-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-2.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 font-bold font-mono tracking-widest text-center mt-1 focus:outline-none focus:border-orange-500"
-                />
-                <p className="text-[8.5px] text-zinc-400 mt-0.5 text-right">Requested customer test PhonePe number: <strong className="font-mono text-orange-500">7702906994</strong></p>
+          <div 
+            id="open-payment-screen-card"
+            onClick={() => setCheckoutStep('payment')}
+            className="p-3.5 bg-slate-50 dark:bg-zinc-850 hover:bg-slate-100 dark:hover:bg-zinc-800/90 rounded-2xl border border-slate-200/80 dark:border-zinc-750 flex items-center justify-between cursor-pointer transition group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center font-black text-lg">
+                {paymentMethod === 'Credit Card' ? '💳' : paymentMethod === 'Wallet' ? '👛' : paymentMethod === 'COD' ? '🤝' : '📱'}
               </div>
-
-              {/* CARD INTEGRATION SELECTION */}
-              {savedCards.length > 0 && (
-                <div className="pt-2.5 border-t border-dashed border-slate-250 dark:border-zinc-800">
-                  <span className="block text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                    💳 Fast Checkout: Saved Cards ({savedCards.length})
+              <div className="text-left">
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-black text-zinc-900 dark:text-zinc-100">
+                    {paymentMethod === 'Credit Card' 
+                      ? 'Credit / Debit Card' 
+                      : paymentMethod === 'Wallet' 
+                      ? 'Digital Wallet (Nuvvo / Apps)' 
+                      : paymentMethod === 'COD' 
+                      ? 'Cash / QR on Delivery' 
+                      : 'UPI (Google Pay / PhonePe / QR)'}
+                  </h4>
+                  <span className="text-[8px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.2 rounded font-mono font-bold">
+                    Secure
                   </span>
-                  <div className="space-y-2">
-                    {savedCards.map(c => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCardId(selectedCardId === c.id ? null : c.id);
-                          setSelectedUPIId(null);
-                        }}
-                        className={`w-full p-3 rounded-2xl border text-left flex justify-between items-center transition-all cursor-pointer ${
-                          selectedCardId === c.id
-                            ? 'bg-orange-500/10 border-orange-500 ring-1 ring-orange-500/30'
-                            : 'bg-white dark:bg-zinc-900 border-slate-150 dark:border-zinc-800'
-                        }`}
-                      >
-                        <div>
-                          <p className="font-extrabold text-[10.5px] text-zinc-850 dark:text-zinc-150 flex items-center gap-1.5">
-                            <span className="text-[8px] font-black text-orange-600 px-1.5 py-0.2 rounded border bg-orange-500/10 uppercase tracking-wide">{c.cardBrand}</span>
-                            {c.cardNumber}
-                          </p>
-                          <p className="text-[8.5px] text-zinc-400 uppercase font-mono mt-0.5 leading-none">Holder: {c.cardHolder} • Exp: {c.expiryDate}</p>
-                        </div>
-                        {selectedCardId === c.id && <Check className="w-4 h-4 text-orange-500" />}
-                      </button>
-                    ))}
-                  </div>
                 </div>
-              )}
-            </motion.div>
-          )}
-
-          {paymentMethod === 'UPI' && (
-            <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="space-y-3 mt-2 p-3 bg-slate-50 dark:bg-zinc-850 rounded-2xl border border-slate-150/75 text-left">
-              <span className="block text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                ⚡ Secure Saved UPI Profiles ({savedUPIs.length})
-              </span>
-              
-              {savedUPIs.length === 0 ? (
-                <p className="text-[9px] text-zinc-400 italic">No saved UPI addresses found. Add a VPA profile on your Account page for fast, one-tap autopay experience.</p>
-              ) : (
-                <div className="space-y-2">
-                  {savedUPIs.map(u => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedUPIId(selectedUPIId === u.id ? null : u.id);
-                        setSelectedCardId(null);
-                      }}
-                      className={`w-full p-3 rounded-2xl border text-left flex justify-between items-center transition-all cursor-pointer ${
-                        selectedUPIId === u.id
-                          ? 'bg-orange-500/10 border-orange-500 ring-1 ring-orange-500/30'
-                          : 'bg-white dark:bg-zinc-900 border-slate-150 dark:border-zinc-800'
-                      }`}
-                    >
-                      <div>
-                        <p className="font-extrabold text-[10.5px] text-zinc-850 dark:text-zinc-150">{u.name}</p>
-                        <p className="font-mono text-[9px] text-zinc-400 mt-0.5 leading-none">{u.upiId}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[8px] font-black px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-zinc-550 uppercase">{u.provider}</span>
-                        {selectedUPIId === u.id && <Check className="w-4 h-4 text-orange-500" />}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              
-              <div className="p-2.5 border border-dashed rounded-xl bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800">
-                <p className="text-[8.5px] text-zinc-550 dark:text-zinc-350 text-center uppercase font-black tracking-wider leading-none">
-                  {selectedUPIId 
-                    ? '🟢 One-Tap pay is ACTIVE. Ready for instant checkout authorization!' 
-                    : '👉 Tip: Link or select your UPI account above for faster processing.'}
+                <p className="text-[10px] text-zinc-400 mt-0.5">
+                  {lastPaymentDetails?.maskedInfo 
+                    ? `Selected: ${lastPaymentDetails.maskedInfo}` 
+                    : 'Tap to customize UPI apps, card details, or wallet balance'}
                 </p>
               </div>
-            </motion.div>
-          )}
+            </div>
+
+            <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+          </div>
         </div>
 
-        {/* LAUNCH ORDER SUBMISSION CALL */}
+        {/* LAUNCH PROCEED TO PAYMENT CALL */}
         <button
-          onClick={handleCreateOrder}
+          id="proceed-to-payment-action-btn"
+          onClick={() => {
+            if (!currentAddress) {
+              alert('Kindly configure or select a valid delivery address in your Profile or Cart.');
+              setShowAddrModal(true);
+              return;
+            }
+            if (currentAddress.gpsCoordinates) {
+              const isValid = validateDeliveryLocation(currentAddress.gpsCoordinates.lat, currentAddress.gpsCoordinates.lng);
+              if (!isValid) {
+                alert('Sorry, delivery is currently unavailable for this location. Please adjust your delivery pin closer to active operational sectors.');
+                setShowAddrModal(true);
+                return;
+              }
+            }
+            setCheckoutStep('payment');
+          }}
           className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white py-4 rounded-3xl font-extrabold transition-all shadow-xl shadow-orange-500/10 flex items-center justify-center gap-2 active:scale-98 cursor-pointer mt-4 group"
         >
-          <span>Confirm & Proceed on ₹{finalAmount}</span>
+          <span>Proceed to Payment • ₹{finalAmount}</span>
           <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+        </button>
+
+        {/* WhatsApp Food Booking & Direct Order Option */}
+        <button
+          id="cart-whatsapp-food-booking-btn"
+          type="button"
+          onClick={() => {
+            const firstRestId = cart[0]?.foodItem.restaurantId;
+            const matchedRest = restaurants?.find(r => r.id === firstRestId);
+            const restName = matchedRest?.name || 'Nuvvo Kitchen Partner';
+
+            clickToWhatsAppFoodBooking({
+              restaurantName: restName,
+              items: cart.map(item => ({
+                name: item.foodItem.name,
+                quantity: item.quantity,
+                price: item.foodItem.discountPrice || item.foodItem.price
+              })),
+              totalAmount: finalAmount,
+              deliveryAddress: currentAddress?.fullAddress || currentAddress?.landmark || 'Chirala, Andhra Pradesh',
+              customerName: user?.name,
+              customerPhone: user?.phone || '9063692135',
+              customNote: orderInstructions || undefined
+            });
+          }}
+          className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-3xl font-extrabold transition-all shadow-lg shadow-emerald-500/15 flex items-center justify-center gap-2 active:scale-98 cursor-pointer mt-2.5 text-xs group"
+        >
+          <span className="text-sm">💬</span>
+          <span>Book / Order via WhatsApp (+91 9063692135)</span>
         </button>
 
       </div>

@@ -1397,9 +1397,9 @@ export default function AdminPanel() {
                   onClick={() => {
                     if (!bulkMsg.trim()) { alert("Please type your warning message notice draft first."); return; }
                     const text = encodeURIComponent(bulkMsg);
-                    window.open(`https://wa.me/8328355812?text=${text}`, "_blank");
+                    window.open(`https://wa.me/9063692135?text=${text}`, "_blank");
                     setMsgLogs(prev => [`[WA - ${new Date().toLocaleTimeString()}] Sync template initialized`, ...prev]);
-                    alert("Ecosystem: Initiated bulk WhatsApp API redirect pipeline check on cell 8328355812.");
+                    alert("Ecosystem: Initiated bulk WhatsApp API redirect pipeline check on cell 9063692135.");
                   }}
                   className="bg-emerald-500 hover:bg-emerald-600 text-white font-black py-2.5 rounded-xl uppercase flex items-center justify-center gap-1 cursor-pointer"
                 >

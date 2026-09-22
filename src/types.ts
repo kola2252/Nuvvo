@@ -136,6 +136,8 @@ export interface CartItem {
 
 export type OrderStatus = 'accepted' | 'preparing' | 'picked' | 'on_the_way' | 'delivered' | 'cancelled';
 
+export type PaymentMethodType = 'UPI' | 'Credit Card' | 'Wallet' | 'PhonePe' | 'COD';
+
 export interface Order {
   id: string;
   customerId: string;
@@ -153,9 +155,15 @@ export interface Order {
   address: Address;
   instructions?: string;
   couponUsed?: string;
-  paymentMethod: 'PhonePe' | 'UPI' | 'COD';
+  paymentMethod: PaymentMethodType | string;
   paymentStatus: 'pending' | 'success' | 'failed';
   phonePeNumber?: string;
+  paymentDetails?: {
+    type?: string;
+    provider?: string;
+    maskedInfo?: string;
+    transactionRef?: string;
+  };
   date: string;
   eta: number; // mins remaining / total duration
   trackingHistory: { status: OrderStatus; time: string }[];

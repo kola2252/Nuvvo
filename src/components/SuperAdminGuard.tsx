@@ -30,7 +30,7 @@ export default function SuperAdminGuard({ children, fallback = null, showBadge =
         <ShieldCheck className="w-5 h-5 text-amber-500 shrink-0 animate-pulse" />
         <div className="text-left font-sans">
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">Super Admin Clearance Locked</p>
-          <p className="text-[9px] text-zinc-450 dark:text-zinc-400 mt-0.5 leading-snug">Modifications on global application registries are locked to read-only. Elevate to cellular terminal 8328355812 to run write procedures.</p>
+          <p className="text-[9px] text-zinc-450 dark:text-zinc-400 mt-0.5 leading-snug">Modifications on global application registries are locked to read-only. Elevate to cellular terminal 9063692135 to run write procedures.</p>
         </div>
       </div>
     );

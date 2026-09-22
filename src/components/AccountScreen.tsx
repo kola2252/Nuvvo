@@ -11,7 +11,8 @@ import {
   Settings, ToggleLeft, ToggleRight, Trash, Globe, ShieldAlert, Award, Upload,
   History, RefreshCw, ChevronDown, ChevronLeft, CheckCircle, Edit, Plus, X, Map, Check,
   Bell, Sparkles, CreditCard, Lock, Camera, Star, ShoppingBag, Search,
-  Share2, Copy, Gift, Users, Wallet, Receipt, Printer, Download
+  Share2, Copy, Gift, Users, Wallet, Receipt, Printer, Download,
+  MessageSquare, Send, Clock, ChevronUp, Mail
 } from 'lucide-react';
 import { Address, SavedCard, SavedUPI } from '../types';
 import OrderHistory from './OrderHistory';
@@ -19,7 +20,7 @@ import OrderHistory from './OrderHistory';
 export default function AccountScreen() {
   const { 
     user, toggleDarkMode, darkMode, logoutUser, setCurrentPage, 
-    currentAddress, clickToWhatsAppSupport, logs, changeOrderStatus,
+    currentAddress, clickToWhatsAppSupport, clickToWhatsAppFoodBooking, logs, changeOrderStatus, addAuditLog,
     registerNewRestaurantRequest, restaurants, toggleRestaurantActiveStatus,
     orders, reorderItems, updateUserAddresses, setCurrentAddress,
     orderUpdatesEnabled, promotionalAlertsEnabled, deliveryUpdatesEnabled,
@@ -33,6 +34,149 @@ export default function AccountScreen() {
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [selectedPreviewThemeId, setSelectedPreviewThemeId] = useState<string>(currentTheme.id);
   const [showThemeAppliedMessage, setShowThemeAppliedMessage] = useState<boolean>(false);
+
+  // Help & Support States
+  const [showCallRoutingOptions, setShowCallRoutingOptions] = useState(false);
+  const [faqSearchQuery, setFaqSearchQuery] = useState('');
+  const [expandedFaqId, setExpandedFaqId] = useState<number | null>(null);
+  const [contactName, setContactName] = useState(user?.name || '');
+  const [contactEmail, setContactEmail] = useState(user?.email || '');
+  const [contactSubject, setContactSubject] = useState('Delivery Issue');
+  const [contactOrderId, setContactOrderId] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [isSubmittingSupport, setIsSubmittingSupport] = useState(false);
+  const [supportSubmissionStep, setSupportSubmissionStep] = useState('');
+  const [supportSuccessMsg, setSupportSuccessMsg] = useState<string | null>(null);
+  const [supportTickets, setSupportTickets] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem('nuvvo_support_tickets');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Sync profile email/name changes with support form fields
+  useEffect(() => {
+    if (user) {
+      setContactName(user.name || '');
+      setContactEmail(user.email || '');
+    }
+  }, [user]);
+
+  const handleSubmitSupportTicket = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactMessage.trim()) {
+      alert("Please enter a support message.");
+      return;
+    }
+
+    setIsSubmittingSupport(true);
+    setSupportSubmissionStep("Connecting to secure customer support portal...");
+
+    setTimeout(() => {
+      setSupportSubmissionStep("Routing ticket to a local support representative in Chirala...");
+      setTimeout(() => {
+        setSupportSubmissionStep("Encrypting communications and archiving logs...");
+        setTimeout(() => {
+          const newTicket = {
+            id: `TKT-${Math.floor(100000 + Math.random() * 900000)}`,
+            name: contactName,
+            email: contactEmail,
+            subject: contactSubject,
+            orderId: contactOrderId || undefined,
+            message: contactMessage,
+            status: 'Open',
+            date: new Date().toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            replies: []
+          };
+
+          const updatedTickets = [newTicket, ...supportTickets];
+          setSupportTickets(updatedTickets);
+          localStorage.setItem('nuvvo_support_tickets', JSON.stringify(updatedTickets));
+
+          setContactMessage('');
+          setContactOrderId('');
+          setIsSubmittingSupport(false);
+          setSupportSuccessMsg(`Ticket ${newTicket.id} has been successfully filed!`);
+          setTimeout(() => setSupportSuccessMsg(null), 5000);
+        }, 800);
+      }, 800);
+    }, 800);
+  };
+
+  const handleSimulateAgentReply = (ticketId: string) => {
+    const updated = supportTickets.map(t => {
+      if (t.id === ticketId && t.status === 'Open') {
+        const agentReplies: { [key: string]: string } = {
+          'Delivery Issue': "Hello! I am Srinu from Chirala Regional Support. I have contacted your delivery partner. They had a brief signal issue near Muntha Vari Center but are currently on their way. Your fresh hot meal will be delivered within 5-10 minutes. Thank you for your patience!",
+          'Payment/Refund Inquiry': "Hi there! This is Ananya from Billing. I've reviewed your order transaction. The payment gateway refund has been successfully initiated to your original bank account. It typically takes 1-2 banking days to reflect. Please let us know if you need anything else!",
+          'App/Technical Bug': "Thank you for reporting this bug! Our engineering team has logged this issue. We have released an update that resolves this glitch. Please refresh the page. Let us know if you experience this again.",
+          'Points & Wallet Inquiry': "Hi! I see your query about Nuvvo Points/Wallet. Your points have been correctly synced under your profile's loyalty wallet. Keep spinning the daily wheel for extra points! Happy dining!",
+          'Other Support': "Greetings! This is Nuvvo Priority Care. We have received your query and escalated it to our senior desk team. We will resolve this as quickly as possible and notify you shortly."
+        };
+
+        const replyText = agentReplies[t.subject] || "Hello! We are looking into your support ticket and will get back to you shortly.";
+
+        return {
+          ...t,
+          status: 'In Progress',
+          replies: [
+            ...t.replies,
+            {
+              sender: 'agent',
+              message: replyText,
+              date: new Date().toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            }
+          ]
+        };
+      } else if (t.id === ticketId && t.status === 'In Progress') {
+        // Resolve ticket
+        return {
+          ...t,
+          status: 'Resolved',
+          replies: [
+            ...t.replies,
+            {
+              sender: 'agent',
+              message: "Hi! Since we haven't heard back, we've marked this ticket as resolved. Feel free to open a new ticket if you have other questions!",
+              date: new Date().toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            }
+          ]
+        };
+      }
+      return t;
+    });
+
+    setSupportTickets(updated);
+    localStorage.setItem('nuvvo_support_tickets', JSON.stringify(updated));
+  };
+
+  const handleDeleteTicket = (ticketId: string) => {
+    if (window.confirm("Are you sure you want to dismiss this support ticket archive?")) {
+      const updated = supportTickets.filter(t => t.id !== ticketId);
+      setSupportTickets(updated);
+      localStorage.setItem('nuvvo_support_tickets', JSON.stringify(updated));
+    }
+  };
 
   useEffect(() => {
     setSelectedPreviewThemeId(currentTheme.id);
@@ -319,11 +463,18 @@ Thank you for dining with Nuvvo Gourmet!`;
 
   const [savedUPIs, setSavedUPIs] = useState<SavedUPI[]>(() => {
     if (!user) return [];
+    const activeGPayNum = (() => {
+      try {
+        return localStorage.getItem('nuvvo_googlepay_number') || '7702906994';
+      } catch {
+        return '7702906994';
+      }
+    })();
     try {
       const stored = localStorage.getItem(`nuvvo_upis_${user.phone}`);
       return stored ? JSON.parse(stored) : [
-        { id: 'upi_demo_1', name: 'Personal GPay', upiId: `${user.phone}@okaxis`, provider: 'GPAY' },
-        { id: 'upi_demo_2', name: 'PhonePe Secondary', upiId: `${user.phone}@ybl`, provider: 'PHONEPE' }
+        { id: 'upi_demo_1', name: 'Google Pay Primary', upiId: `${activeGPayNum}@okhdfcbank`, provider: 'GPAY' },
+        { id: 'upi_demo_2', name: 'PhonePe Secondary', upiId: `${activeGPayNum}@ybl`, provider: 'PHONEPE' }
       ];
     } catch {
       return [];
@@ -829,7 +980,8 @@ Thank you for dining with Nuvvo Gourmet!`;
   };
 
   const paymentProfilesMock = [
-    { provider: 'PhonePe', value: '7702906994', checked: true, color: 'bg-violet-50 text-violet-600 border-violet-100' },
+    { provider: 'Google Pay', value: '7702906994@okhdfcbank', checked: true, color: 'bg-blue-50 text-blue-600 border-blue-100' },
+    { provider: 'PhonePe', value: '7702906994', checked: false, color: 'bg-violet-50 text-violet-600 border-violet-100' },
     { provider: 'Bharat UPI', value: '7702906994@ybl', checked: false, color: 'bg-emerald-50 text-emerald-600 border-emerald-100' }
   ];
 
@@ -904,10 +1056,12 @@ Thank you for dining with Nuvvo Gourmet!`;
               </h3>
               <p className="text-[10px] text-zinc-400 font-mono font-bold mt-1 tracking-tight">MOBILE: +91 {user?.phone || 'Guest Mode'}</p>
               <div className="mt-1 flex gap-1">
-                <span className="text-[9px] bg-orange-500/10 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase">
-                  Role: {user?.role || 'Guest'}
-                </span>
-                {user?.phone === '8328355812' && (
+                {user?.role && (
+                  <span className="text-[9px] bg-orange-500/10 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase">
+                    Role: {user?.role || 'Guest'}
+                  </span>
+                )}
+                {(user?.phone === '9063692135' || user?.phone === '8328355812') && (
                   <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase animate-pulse">Super Master</span>
                 )}
               </div>
@@ -2263,7 +2417,7 @@ Thank you for dining with Nuvvo Gourmet!`;
           </h4>
           <p className="text-[10px] text-zinc-400 leading-snug">Instantly transition your UI view into different sections of the Nuvvo Ecosystem below:</p>
           
-          <div className={`${user?.phone === '8328355812' ? 'grid-cols-3' : 'grid-cols-2'} grid gap-2 text-center text-xs`}>
+          <div className={`${(user?.phone === '9063692135' || user?.phone === '8328355812') ? 'grid-cols-3' : 'grid-cols-2'} grid gap-2 text-center text-xs`}>
             <button 
               onClick={() => setCurrentPage('partner')}
               className="p-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer"
@@ -2282,7 +2436,7 @@ Thank you for dining with Nuvvo Gourmet!`;
               onClick={() => setCurrentPage('admin')}
               className="p-3 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer"
             >
-              📊 Admin {user?.phone !== '8328355812' && ' (View)'}
+              📊 Admin {(user?.phone !== '9063692135' && user?.phone !== '8328355812') && ' (View)'}
             </button>
           </div>
         </div>
@@ -3191,6 +3345,492 @@ Thank you for dining with Nuvvo Gourmet!`;
               )}
             </div>
           )}
+        </div>
+
+        {/* HELP & SUPPORT SECTION */}
+        <div id="help-support-workspace" className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-3xl p-5 shadow-sm space-y-4">
+          
+          {/* Header */}
+          <div className="flex justify-between items-center border-b pb-2 dark:border-zinc-800">
+            <h4 className="text-xs font-black text-zinc-950 dark:text-zinc-50 tracking-tight uppercase flex items-center gap-1.5">
+              <HelpCircle className="w-4 h-4 text-orange-500 animate-pulse" /> Help & Support
+            </h4>
+            <span className="text-[9px] bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 font-extrabold uppercase px-2 py-0.5 rounded-full">
+              24/7 Helpline
+            </span>
+          </div>
+
+          {/* Quick Helpline Call Option */}
+          <div className="p-4 bg-orange-500/[0.02] border border-orange-500/10 rounded-2xl text-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
+              <div className="space-y-1">
+                <p className="font-extrabold text-zinc-900 dark:text-zinc-50 leading-tight">Direct Helpline Channel</p>
+                <p className="text-[10px] text-zinc-450 leading-relaxed">Connect directly with our regional customer care team in Chirala via instant WhatsApp or direct cellular calls.</p>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                <button 
+                  onClick={() => clickToWhatsAppSupport('Support Query: Requesting assistance from Help & Support Center.')}
+                  type="button"
+                  className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-[10px] uppercase rounded-xl tracking-wider transition-all shadow-sm shadow-emerald-500/10 cursor-pointer flex items-center gap-1 active:scale-95"
+                  title="Open live chat on WhatsApp"
+                >
+                  <MessageSquare className="w-3 h-3" /> WhatsApp
+                </button>
+                <button 
+                  onClick={() => setShowCallRoutingOptions(!showCallRoutingOptions)}
+                  type="button"
+                  className={`px-3 py-2 text-white font-black text-[10px] uppercase rounded-xl tracking-wider transition-all shadow-sm cursor-pointer flex items-center gap-1 active:scale-95 ${
+                    showCallRoutingOptions 
+                      ? 'bg-zinc-800 dark:bg-zinc-700 shadow-zinc-500/10' 
+                      : 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/10'
+                  }`}
+                  title="View direct dial routing lines"
+                >
+                  <PhoneCall className="w-3 h-3" /> {showCallRoutingOptions ? 'Hide Lines' : 'Call Care'}
+                </button>
+              </div>
+            </div>
+
+            {/* Expanded Routing Lines Panel */}
+            <AnimatePresence>
+              {showCallRoutingOptions && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden border-t border-slate-100 dark:border-zinc-800/80 pt-3 space-y-2 text-left"
+                >
+                  <p className="text-[9px] uppercase font-black tracking-wider text-orange-500">Chirala Support Desks (Direct Dial):</p>
+                  
+                  <div className="grid grid-cols-1 gap-2">
+                    {/* Food Bookings & Party Orders Helpline */}
+                    <div 
+                      className="p-2.5 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                    >
+                      <div className="space-y-0.5">
+                        <p className="font-extrabold text-emerald-800 dark:text-emerald-300 text-[11px] flex items-center gap-1">
+                          <span>🍽️ Food Bookings, Catering & Party Orders</span>
+                          <span className="text-[8px] bg-emerald-600 text-white font-bold px-1.5 py-0.2 rounded-full uppercase">Priority</span>
+                        </p>
+                        <p className="text-[9px] text-zinc-500 dark:text-zinc-400">Direct booking desk via WhatsApp or Call on 9063692135</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => clickToWhatsAppFoodBooking('Hi Nuvvo Team! I want to inquire about food bookings, catering, or a special food order.')}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-mono font-black text-[10px] rounded-lg shrink-0 flex items-center gap-1 cursor-pointer transition shadow-xs"
+                          title="Book Food on WhatsApp"
+                        >
+                          <MessageSquare className="w-2.5 h-2.5" /> WhatsApp
+                        </button>
+                        <a 
+                          href="tel:+919063692135"
+                          onClick={() => addAuditLog('Helpline Dialed', 'Initiated direct cellular call to Food Bookings Careline')}
+                          className="font-mono font-black text-[10px] text-emerald-700 dark:text-emerald-300 bg-white dark:bg-zinc-800 border border-emerald-500/30 px-2 py-1 rounded-lg shrink-0 flex items-center gap-1"
+                        >
+                          <PhoneCall className="w-2.5 h-2.5" /> +91 90636 92135
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* General Care */}
+                    <a 
+                      href="tel:+919063692135"
+                      onClick={() => addAuditLog('Helpline Dialed', 'Initiated direct cellular call to Customer Care Careline')}
+                      className="p-2.5 bg-white dark:bg-zinc-900 border border-slate-150 dark:border-zinc-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between hover:bg-orange-500/[0.02] dark:hover:bg-orange-500/[0.01] hover:border-orange-200 transition group gap-2"
+                    >
+                      <div className="space-y-0.5">
+                        <p className="font-extrabold text-zinc-800 dark:text-zinc-200 text-[11px] group-hover:text-orange-500 transition">Customer Care Careline</p>
+                        <p className="text-[9px] text-zinc-450">Order issues, refunds, and generic app help</p>
+                      </div>
+                      <span className="font-mono font-black text-[10px] text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-950/40 px-2 py-1 rounded-lg shrink-0 flex items-center gap-1">
+                        <PhoneCall className="w-2.5 h-2.5" /> +91 90636 92135
+                      </span>
+                    </a>
+
+                    {/* Delivery Dispatch */}
+                    <a 
+                      href="tel:+919063692135"
+                      onClick={() => addAuditLog('Helpline Dialed', 'Initiated direct cellular call to Delivery Dispatch Desk')}
+                      className="p-2.5 bg-white dark:bg-zinc-900 border border-slate-150 dark:border-zinc-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between hover:bg-orange-500/[0.02] dark:hover:bg-orange-500/[0.01] hover:border-orange-200 transition group gap-2"
+                    >
+                      <div className="space-y-0.5">
+                        <p className="font-extrabold text-zinc-800 dark:text-zinc-200 text-[11px] group-hover:text-orange-500 transition">Delivery Dispatch Desk</p>
+                        <p className="text-[9px] text-zinc-450">Rider tracking, routing, and transit delay escalations</p>
+                      </div>
+                      <span className="font-mono font-black text-[10px] text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-950/40 px-2 py-1 rounded-lg shrink-0 flex items-center gap-1">
+                        <PhoneCall className="w-2.5 h-2.5" /> +91 90636 92135
+                      </span>
+                    </a>
+
+                    {/* Kitchen Merchant Help */}
+                    <a 
+                      href="tel:+919063692135"
+                      onClick={() => addAuditLog('Helpline Dialed', 'Initiated direct cellular call to Kitchen Partner Desk')}
+                      className="p-2.5 bg-white dark:bg-zinc-900 border border-slate-150 dark:border-zinc-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between hover:bg-orange-500/[0.02] dark:hover:bg-orange-500/[0.01] hover:border-orange-200 transition group gap-2"
+                    >
+                      <div className="space-y-0.5">
+                        <p className="font-extrabold text-zinc-800 dark:text-zinc-200 text-[11px] group-hover:text-orange-500 transition">Kitchen Partner Desk</p>
+                        <p className="text-[9px] text-zinc-450">Onboarding, menu settings, and kitchen listing support</p>
+                      </div>
+                      <span className="font-mono font-black text-[10px] text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-950/40 px-2 py-1 rounded-lg shrink-0 flex items-center gap-1">
+                        <PhoneCall className="w-2.5 h-2.5" /> +91 90636 92135
+                      </span>
+                    </a>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* FAQ Sub-section */}
+          <div className="space-y-3 pt-1">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-orange-500 text-left">🔍 Search Help Center</span>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                <input 
+                  type="text"
+                  value={faqSearchQuery}
+                  onChange={(e) => setFaqSearchQuery(e.target.value)}
+                  placeholder="Type keywords (e.g. points, refund, order)..."
+                  className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-zinc-750 font-bold text-xs focus:outline-none focus:border-orange-500 placeholder-zinc-400 dark:placeholder-zinc-500"
+                />
+                {faqSearchQuery && (
+                  <button 
+                    onClick={() => setFaqSearchQuery('')}
+                    type="button"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 bg-slate-200 dark:bg-zinc-700 hover:bg-slate-300 rounded-full transition-colors cursor-pointer"
+                  >
+                    <X className="w-3 h-3 text-zinc-500" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* FAQs Accordion */}
+            <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+              {(() => {
+                const faqs = [
+                  {
+                    id: 1,
+                    category: "Orders & Delivery",
+                    question: "How do I track my active order status?",
+                    answer: "You can track your active order in real-time by visiting the 'Order History' or clicking the status tracking bar on the Home screen. Our regional partners update statuses from 'Accepted' to 'Preparing', 'Picked Up', 'On the Way', and 'Delivered'."
+                  },
+                  {
+                    id: 2,
+                    category: "Cancellation & Refunds",
+                    question: "Can I cancel my order after placing it?",
+                    answer: "Orders can only be cancelled before they are accepted by the regional kitchen. Once preparation begins, cancellation is restricted to avoid wasting fresh food. If a kitchen rejects or cancels your order, any digital payment is automatically refunded to your Nuvvo Wallet or source bank account immediately."
+                  },
+                  {
+                    id: 3,
+                    category: "Loyalty & Cashback",
+                    question: "What are Nuvvo Points and how do I redeem them?",
+                    answer: "Nuvvo Points are earned on every completed purchase (typically 1 point per ₹10 spent). You can also win bonus points in the Daily Spin. Points can be redeemed at checkout as a direct cash discount (1 point = ₹1) on your total bill amount."
+                  },
+                  {
+                    id: 4,
+                    category: "Wallet & Recharge",
+                    question: "How do I add money or use my Nuvvo Wallet?",
+                    answer: "To add money, go to your 'Nuvvo Wallet' section right above in your account screen, enter the amount, select a mock payment channel, and tap 'Load Money'. Wallet balances can be used for seamless, single-tap order checkouts without navigating OTP banks."
+                  },
+                  {
+                    id: 5,
+                    category: "Referral Program",
+                    question: "How does the referral bonus system work?",
+                    answer: "Share your unique referral code with friends. When a friend signs up using your code, you both receive ₹100 in Store Credits. When they place their first order, you receive an additional bonus of ₹150. You can convert these Store Credits into Nuvvo Points with a single click!"
+                  },
+                  {
+                    id: 6,
+                    category: "Kitchen Onboarding",
+                    question: "Can I register my home kitchen or restaurant on Nuvvo?",
+                    answer: "Yes! Scroll to the 'Kitchen Onboarding Hub' card inside this profile, enter your kitchen's business name, specify your cuisines, and hit 'Submit'. Our Super Admin verifies listings within 24 hours. Once approved, you can activate your kitchen and accept orders!"
+                  }
+                ];
+
+                const filtered = faqs.filter(faq => 
+                  faq.question.toLowerCase().includes(faqSearchQuery.toLowerCase()) ||
+                  faq.answer.toLowerCase().includes(faqSearchQuery.toLowerCase()) ||
+                  faq.category.toLowerCase().includes(faqSearchQuery.toLowerCase())
+                );
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-4 text-center text-zinc-400 text-[11px] font-medium italic border border-dashed rounded-xl">
+                      No matching FAQs found. Try searching another keyword!
+                    </div>
+                  );
+                }
+
+                return filtered.map(faq => {
+                  const isExpanded = expandedFaqId === faq.id;
+                  return (
+                    <div 
+                      key={faq.id} 
+                      className="border border-slate-100 dark:border-zinc-800 rounded-xl overflow-hidden transition-all duration-200"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setExpandedFaqId(isExpanded ? null : faq.id)}
+                        className="w-full p-3 bg-slate-50/50 dark:bg-zinc-850/40 hover:bg-slate-50 dark:hover:bg-zinc-800 flex items-center justify-between text-left gap-2 text-xs font-extrabold text-zinc-800 dark:text-zinc-200 transition-colors"
+                      >
+                        <span className="leading-snug">{faq.question}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180 text-orange-500' : ''}`} />
+                      </button>
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden bg-white dark:bg-zinc-900 border-t border-slate-100 dark:border-zinc-800"
+                          >
+                            <div className="p-3 text-[11px] text-zinc-600 dark:text-zinc-455 leading-relaxed text-left space-y-1.5">
+                              <p>{faq.answer}</p>
+                              <span className="inline-block text-[9px] bg-slate-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold px-1.5 py-0.5 rounded uppercase">
+                                Category: {faq.category}
+                              </span>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+
+          {/* Support Ticket / Contact Form Sub-section */}
+          <div className="border-t border-dashed border-slate-200 dark:border-zinc-800 pt-4 space-y-3 text-left">
+            <span className="text-[10px] font-black uppercase tracking-wider text-orange-500 flex items-center gap-1">
+              <Mail className="w-3.5 h-3.5" /> File a Support Ticket
+            </span>
+            
+            {supportSuccessMsg && (
+              <motion.div 
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] rounded-2xl flex items-center gap-2"
+              >
+                <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>{supportSuccessMsg}</span>
+              </motion.div>
+            )}
+
+            {isSubmittingSupport ? (
+              <div className="py-8 text-center space-y-3 bg-slate-50 dark:bg-zinc-850 rounded-2xl border border-slate-100 dark:border-zinc-800 p-4">
+                <RefreshCw className="w-8 h-8 text-orange-500 animate-spin mx-auto" />
+                <p className="text-xs font-black text-zinc-700 dark:text-zinc-300">Filing Support Ticket...</p>
+                <p className="text-[10px] text-zinc-400 font-mono italic animate-pulse">{supportSubmissionStep}</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitSupportTicket} className="space-y-3 text-xs">
+                {/* Prefilled/Editable Name & Email */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[9px] uppercase font-black text-zinc-400 dark:text-zinc-500 mb-1 tracking-wider">Your Name</label>
+                    <input 
+                      type="text"
+                      required
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="Name"
+                      className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-750 font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] uppercase font-black text-zinc-400 dark:text-zinc-500 mb-1 tracking-wider">Your Email</label>
+                    <input 
+                      type="email"
+                      required
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-750 font-bold"
+                    />
+                  </div>
+                </div>
+
+                {/* Subject & Order Reference Selection */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[9px] uppercase font-black text-zinc-400 dark:text-zinc-500 mb-1 tracking-wider">Topic Subject</label>
+                    <select
+                      value={contactSubject}
+                      onChange={(e) => setContactSubject(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-750 font-bold cursor-pointer"
+                    >
+                      <option value="Delivery Issue">Delivery Issue</option>
+                      <option value="Payment/Refund Inquiry">Payment/Refund Inquiry</option>
+                      <option value="App/Technical Bug">App/Technical Bug</option>
+                      <option value="Points & Wallet Inquiry">Points & Wallet Inquiry</option>
+                      <option value="Other Support">Other Support</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] uppercase font-black text-zinc-400 dark:text-zinc-500 mb-1 tracking-wider">Link Order (Optional)</label>
+                    {orders && orders.length > 0 ? (
+                      <select
+                        value={contactOrderId}
+                        onChange={(e) => setContactOrderId(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-750 font-bold cursor-pointer"
+                      >
+                        <option value="">-- No Order Selected --</option>
+                        {orders.map((o: any) => (
+                          <option key={o.id} value={o.id}>
+                            Order #{o.id.slice(-6).toUpperCase()} (₹{o.totalAmount || o.finalAmount})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input 
+                        type="text"
+                        value={contactOrderId}
+                        onChange={(e) => setContactOrderId(e.target.value)}
+                        placeholder="e.g. #93850"
+                        className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-750 font-bold"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Ticket Message */}
+                <div>
+                  <label className="block text-[9px] uppercase font-black text-zinc-400 dark:text-zinc-500 mb-1 tracking-wider">Support Query / Message</label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={contactMessage}
+                    onChange={(e) => setContactMessage(e.target.value)}
+                    placeholder="Describe your issue or feedback in detail..."
+                    className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-750 font-bold focus:outline-none focus:border-orange-500 resize-none"
+                  />
+                </div>
+
+                {/* Submit button */}
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-xl transition-all uppercase tracking-wider text-[10px] cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-sm shadow-orange-500/10"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Submit Ticket
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* SAVED SUPPORT TICKETS (MOCK RESPONSES & HISTORY INTEGRATION) */}
+          {supportTickets.length > 0 && (
+            <div className="border-t border-dashed border-slate-200 dark:border-zinc-800 pt-4 space-y-3 text-left">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-1">
+                  <MessageSquare className="w-3.5 h-3.5" /> Ticket History ({supportTickets.length})
+                </span>
+                <span className="text-[8px] text-zinc-400 font-bold uppercase">Tap ticket to simulate resolution</span>
+              </div>
+
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                {supportTickets.map((t) => {
+                  const statusColors: { [key: string]: string } = {
+                    'Open': 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20',
+                    'In Progress': 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20',
+                    'Resolved': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  };
+
+                  return (
+                    <div 
+                      key={t.id}
+                      className="p-3 bg-slate-50 dark:bg-zinc-850 border border-slate-100 dark:border-zinc-800/80 rounded-2xl text-[11px] relative space-y-2"
+                    >
+                      {/* Ticket Header details */}
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="space-y-0.5">
+                          <span className="font-mono font-black text-zinc-900 dark:text-zinc-200">{t.id}</span>
+                          <p className="text-[9px] text-zinc-400 font-mono flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5" /> {t.date}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-md ${statusColors[t.status] || ''}`}>
+                            {t.status}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTicket(t.id)}
+                            className="p-1 hover:text-rose-500 text-zinc-400 rounded transition cursor-pointer"
+                            title="Dismiss support ticket record"
+                          >
+                            <Trash className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Ticket Body details */}
+                      <div className="space-y-1.5">
+                        <div className="text-xs font-black text-zinc-850 dark:text-zinc-150">
+                          Subject: {t.subject}
+                          {t.orderId && (
+                            <span className="ml-1.5 text-[9px] font-mono bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded uppercase font-black">
+                              Order #{t.orderId.slice(-6).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-zinc-650 dark:text-zinc-400 leading-relaxed italic bg-white dark:bg-zinc-900/60 p-2 rounded-xl border border-slate-100 dark:border-zinc-800">
+                          "{t.message}"
+                        </p>
+                      </div>
+
+                      {/* Ticket Replies loop */}
+                      {t.replies && t.replies.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          {t.replies.map((r: any, rIdx: number) => (
+                            <div 
+                              key={rIdx}
+                              className={`p-2.5 rounded-xl border text-[10.5px] leading-relaxed text-left ${
+                                r.sender === 'agent' 
+                                  ? 'bg-orange-500/[0.02] border-orange-500/10 text-zinc-700 dark:text-zinc-350' 
+                                  : 'bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800 text-zinc-650 dark:text-zinc-400'
+                              }`}
+                            >
+                              <div className="flex justify-between font-black text-[9px] text-orange-500 uppercase tracking-wider mb-0.5">
+                                <span>{r.sender === 'agent' ? '💁‍♂️ Regional Support Agent' : 'You'}</span>
+                                <span className="text-zinc-400 font-mono">{r.date}</span>
+                              </div>
+                              <p className="font-medium">"{r.message}"</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Reply/Action simulations */}
+                      {t.status !== 'Resolved' && (
+                        <div className="pt-2 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleSimulateAgentReply(t.id)}
+                            className="text-[9.5px] bg-orange-100 hover:bg-orange-500/10 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 font-extrabold uppercase px-2.5 py-1 rounded-xl cursor-pointer flex items-center gap-1 transition"
+                          >
+                            {t.status === 'Open' ? (
+                              <>💁‍♂️ Simulate Agent Response</>
+                            ) : (
+                              <>✓ Resolve Support Ticket</>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
         </div>
 
       </div>

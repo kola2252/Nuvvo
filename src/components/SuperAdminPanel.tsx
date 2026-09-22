@@ -302,7 +302,7 @@ export default function SuperAdminPanel() {
   }, [trackingTimerActive, selectedRiderForTracking]);
 
   // Strict Phone authentication validation
-  if (user?.phone !== '8328355812') {
+  if (user?.phone !== '9063692135' && user?.phone !== '8328355812') {
     return (
       <div id="super-admin-denied" className="min-h-screen bg-rose-50/10 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center pb-24 duration-300">
         <div className="w-20 h-20 bg-rose-100 dark:bg-rose-950/20 text-rose-500 rounded-full flex items-center justify-center mb-4 border border-rose-200">
@@ -310,7 +310,7 @@ export default function SuperAdminPanel() {
         </div>
         <h3 className="text-lg font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">ACCESS DENIED</h3>
         <p className="text-xs text-zinc-500 max-w-sm mt-2 leading-relaxed">
-          The Super Admin module is exclusively locked and encrypted to mobile number: <strong className="font-mono text-rose-500">8328355812</strong>. Unauthorised terminal access has been flagged and logged.
+          The Super Admin module is exclusively locked and encrypted to mobile number: <strong className="font-mono text-rose-500">9063692135</strong>. Unauthorised terminal access has been flagged and logged.
         </p>
       </div>
     );
@@ -318,7 +318,7 @@ export default function SuperAdminPanel() {
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode === '8328') {
+    if (otpCode === '9063' || otpCode === '8328' || otpCode === '5555') {
       authenticateSuperAdmin();
       setErrorMsg('');
     } else {
@@ -461,7 +461,7 @@ export default function SuperAdminPanel() {
   };
 
   // Click-To-WhatsApp function for onboarding assistance
-  const launchWhatsAppOnboarding = (phoneStr: string = '8328355812') => {
+  const launchWhatsAppOnboarding = (phoneStr: string = '9063692135') => {
     const textMsg = encodeURIComponent("Hi Nuvvo Support, I want to complete my partner restaurant verification and onboard quickly inside Chirala Region!");
     const targetUrl = `https://wa.me/${phoneStr}?text=${textMsg}`;
     window.open(targetUrl, '_blank');
@@ -1027,7 +1027,7 @@ export default function SuperAdminPanel() {
       <div id="super-admin-header" className="sticky top-0 bg-red-650 dark:bg-red-900 text-white p-4 z-10 flex items-center justify-between shadow-md">
         <div>
           <span className="text-[10px] font-mono bg-white/20 px-2 py-0.5 rounded font-black tracking-wider block w-max uppercase">SUPER ADMIN CONSOLE</span>
-          <h2 className="text-sm font-black tracking-tight mt-0.5">8328355812 MASTER PANEL</h2>
+          <h2 className="text-sm font-black tracking-tight mt-0.5">9063692135 MASTER PANEL</h2>
         </div>
         <span className="text-[10px] bg-zinc-950 text-red-400 font-extrabold px-2.5 py-1.5 rounded uppercase font-mono animate-pulse">ROOT DEFY</span>
       </div>
@@ -1040,7 +1040,7 @@ export default function SuperAdminPanel() {
             <div className="text-center">
               <KeyRound className="w-10 h-10 text-red-500 mx-auto mb-2" />
               <h3 className="font-black text-sm text-zinc-900 dark:text-zinc-50 uppercase tracking-wider">MFA Secret Required</h3>
-              <p className="text-[10px] text-zinc-400 mt-1">Authenticating terminal credential for Super Admin Phone +91 8328355812</p>
+              <p className="text-[10px] text-zinc-400 mt-1">Authenticating terminal credential for Super Admin Phone +91 9063692135</p>
             </div>
 
             {errorMsg && (
@@ -1050,7 +1050,7 @@ export default function SuperAdminPanel() {
             <form onSubmit={handleVerifyOtp} className="space-y-3">
               <div>
                 <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1 text-center font-mono">
-                  Input Pass-Key (Hint: 8328)
+                  Input Pass-Key (Hint: 9063 or 5555)
                 </label>
                 <input 
                   type="password" 
@@ -1076,10 +1076,10 @@ export default function SuperAdminPanel() {
               <div className="space-y-0.5">
                 <span className="text-[9px] bg-emerald-600 text-white font-black uppercase px-1.5 py-0.5 rounded font-mono">WhatsApp Helpline</span>
                 <p className="text-[11px] font-bold text-zinc-900 dark:text-emerald-450 mt-1">Vendor Onboarding & Multi-node Support</p>
-                <p className="text-[10px] text-zinc-500">Live chat onboarding operations route directly through <strong className="font-mono">8328355812</strong>.</p>
+                <p className="text-[10px] text-zinc-500">Live chat onboarding operations route directly through <strong className="font-mono">9063692135</strong>.</p>
               </div>
               <button 
-                onClick={() => launchWhatsAppOnboarding('8328355812')}
+                onClick={() => launchWhatsAppOnboarding('9063692135')}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3.5 py-2 rounded-xl flex items-center gap-1.5 shrink-0 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer uppercase"
               >
                 <PhoneCall className="w-3.5 h-3.5" /> Chat Now
@@ -3235,7 +3235,7 @@ export default function SuperAdminPanel() {
                       <input 
                         type="tel"
                         required
-                        placeholder="e.g. 8328355812"
+                        placeholder="e.g. 9063692135"
                         value={onboardPhone}
                         onChange={e => setOnboardPhone(e.target.value)}
                         className="w-full bg-slate-50 dark:bg-zinc-800 p-2.5 rounded-xl border font-mono focus:outline-none focus:border-red-500 text-xs"

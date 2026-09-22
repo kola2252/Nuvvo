@@ -30,6 +30,7 @@ export default function Home() {
     orders,
     banners, addAuditLog, applyCouponCode, appliedCoupon,
     getRestaurantOpenStatus, restaurantReviews, currentTheme,
+    clickToWhatsAppFoodBooking,
     pageHistory, goBack, closePage
   } = useApp();
 
@@ -673,6 +674,37 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Quick Access to Top 13 Chirala Partner Restaurants */}
+      <div className="bg-gradient-to-r from-orange-50/80 via-amber-50/50 to-orange-50/80 dark:from-zinc-900 dark:via-zinc-800/80 dark:to-zinc-900 p-3 rounded-2xl border border-orange-100/80 dark:border-zinc-800 shadow-xs">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">🔥</span>
+            <span className="text-xs font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+              చీరాల పాపులర్ రెస్టారెంట్లు (Chirala Top Partner Spots)
+            </span>
+          </div>
+          <span className="text-[11px] font-black text-orange-600 dark:text-orange-400">
+            హోటల్ & ఫుడ్ బుకింగ్స్: 9063692135
+          </span>
+        </div>
+        <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar">
+          {restaurants.slice(0, 13).map((r) => (
+            <button
+              key={r.id}
+              onClick={() => {
+                setSelectedRestaurant(r);
+                setModalTab('overview');
+                setReviewStarFilter('all');
+              }}
+              className="shrink-0 px-3 py-1.5 bg-white dark:bg-zinc-800 hover:bg-orange-500 hover:text-white border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-bold text-zinc-800 dark:text-zinc-200 shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+              <span className="whitespace-nowrap">{r.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 animate-pulse">
           {Array.from({ length: 3 }).map((_, idx) => (
@@ -1216,7 +1248,7 @@ export default function Home() {
             {darkMode ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
           </button>
           
-          {user?.phone === '8328355812' && (
+          {(user?.phone === '9063692135' || user?.phone === '8328355812' || user?.role === 'Super Admin') && (
             <button
               onClick={() => setCurrentPage('super-admin')}
               aria-label="Access Super Admin Master Control Panel"
@@ -1998,12 +2030,30 @@ export default function Home() {
                         <Check className="w-3.5 h-3.5" /> Approved Vendor
                       </span>
                     </div>
-                    {selectedRestaurant.phone && (
+                    <div className="pt-2 flex flex-col gap-2">
                       <div className="flex justify-between items-center py-1">
-                        <span className="font-medium">Direct Hotline</span>
-                        <span className="font-mono font-extrabold text-[10px] text-zinc-700 dark:text-zinc-300">{selectedRestaurant.phone}</span>
+                        <span className="font-medium">Direct Hotline / Booking</span>
+                        <a 
+                          href="tel:+919063692135" 
+                          className="font-mono font-extrabold text-[10px] text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-1"
+                        >
+                          +91 90636 92135
+                        </a>
                       </div>
-                    )}
+
+                      {/* Instant WhatsApp Food Booking Button */}
+                      <button
+                        type="button"
+                        onClick={() => clickToWhatsAppFoodBooking({
+                          restaurantName: selectedRestaurant.name,
+                          customNote: `Hi! I would like to make a food booking / table reservation / takeaway order for ${selectedRestaurant.name}.`
+                        })}
+                        className="w-full py-2.5 px-3 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-sm flex items-center justify-center gap-2 cursor-pointer transition active:scale-95"
+                      >
+                        <span className="text-sm">💬</span>
+                        <span>WhatsApp Food Booking (9063692135)</span>
+                      </button>
+                    </div>
                   </div>
                 </>
               ) : (

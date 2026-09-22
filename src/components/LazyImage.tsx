@@ -66,8 +66,10 @@ export function LazyImage({
         <img
           src={src}
           alt={alt}
+          loading="lazy"
+          decoding="async"
           onLoad={() => setIsLoaded(true)}
-          className={`${className || ''} transition-all duration-500 ${isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+          className={`${className || ''} transition-all duration-300 ${isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
           {...props}
         />
       ) : (
