@@ -10,7 +10,7 @@ import {
   TrendingUp, ShoppingBag, Users, Building, Plus, Tag, Trash, Edit, 
   Settings, Save, PieChart, BarChart2, DollarSign, Bike, Check, Flame, Upload, ShieldAlert,
   Briefcase, MapPin, Download, Send, Globe, Award, Ban, Phone, MessageSquare, FileText, X,
-  Image as ImageIcon, Camera, RefreshCw
+  Image as ImageIcon, Camera, RefreshCw, Trash2, AlertTriangle, Sparkles, Percent
 } from 'lucide-react';
 import { VegIndicator, FranchiseApplication } from '../types';
 import SuperAdminGuard from './SuperAdminGuard';
@@ -18,8 +18,10 @@ import SuperAdminGuard from './SuperAdminGuard';
 export default function AdminPanel() {
   const { 
     orders, foodCatalog, couponsList, addNewCoupon: addCoupon, deleteCoupon: removeCoupon, 
+    clearAllCoupons, resetDefaultCoupons, clearStats, seedSampleOrders,
+    banners, deleteBanner, clearAllBanners, resetDefaultBanners, enableBanner,
     addFoodItem, updateFoodItem, franchiseApplications, deliveryPartner, user, updateFranchiseStatus,
-    restaurants, registerNewRestaurantRequest, approveRestaurant, isSuperAdmin
+    restaurants, registerNewRestaurantRequest, approveRestaurant, isSuperAdmin, setCurrentPage
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'analytics' | 'catalog' | 'coupons' | 'franchise'>('analytics');
@@ -190,6 +192,59 @@ export default function AdminPanel() {
 
       <div className="p-4 max-w-md mx-auto space-y-4">
         
+        {/* MULTI-ROLE PORTAL BRIDGES (TOP PLACE IN ADMIN CHAMBER) */}
+        <div id="admin-chamber-portal-bridges" className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-black text-zinc-950 dark:text-zinc-50 tracking-tight uppercase flex items-center gap-1.5">
+              <Settings className="w-4 h-4 text-orange-500" /> Multi-Role Portal Bridges
+            </h4>
+            <span className="text-[9px] bg-orange-500/10 text-orange-600 dark:text-orange-400 font-black px-2 py-0.5 rounded-full font-mono uppercase">
+              Admin Chamber
+            </span>
+          </div>
+          <p className="text-[10px] text-zinc-400 leading-snug">
+            Instantly transition your UI view into different sections of the Nuvvo Ecosystem below:
+          </p>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+            <button 
+              type="button"
+              onClick={() => setCurrentPage('home')}
+              className="p-3 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 border border-emerald-200/70 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer transition active:scale-95 flex flex-col items-center gap-1 shadow-2xs"
+            >
+              <span className="text-base">🛍️</span>
+              <span>Customer</span>
+            </button>
+
+            <button 
+              type="button"
+              onClick={() => setCurrentPage('partner')}
+              className="p-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 border border-indigo-200/70 dark:border-indigo-800/40 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer transition active:scale-95 flex flex-col items-center gap-1 shadow-2xs"
+            >
+              <span className="text-base">🏍️</span>
+              <span>Partner</span>
+            </button>
+            
+            <button 
+              type="button"
+              onClick={() => setCurrentPage('franchise')}
+              className="p-3 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/40 border border-amber-200/70 dark:border-amber-800/40 text-amber-700 dark:text-amber-300 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer transition active:scale-95 flex flex-col items-center gap-1 shadow-2xs"
+            >
+              <span className="text-base">🌴</span>
+              <span>Franchise</span>
+            </button>
+
+            <button 
+              type="button"
+              onClick={() => setCurrentPage('super-admin')}
+              className="p-3 bg-rose-50 hover:bg-rose-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 border border-rose-200/70 dark:border-red-800/40 text-rose-700 dark:text-red-300 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer transition active:scale-95 flex flex-col items-center gap-1 shadow-2xs"
+            >
+              <span className="text-base">👑</span>
+              <span>Super Admin</span>
+            </button>
+          </div>
+        </div>
+
         {/* Core panel tabs */}
         <div className="grid grid-cols-4 bg-slate-100 dark:bg-zinc-900 p-1 rounded-2xl border text-center text-xs">
           {[
@@ -216,12 +271,61 @@ export default function AdminPanel() {
         {activeTab === 'analytics' && (
           <div className="space-y-4">
             
+            {/* STATS ACTION BAR / CLEAR STATS ACCESS */}
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                    orders.length > 0 
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                  }`}>
+                    {orders.length > 0 ? '● Active Stats' : '○ Stats Cleared (₹0)'}
+                  </span>
+                  <span className="text-xs font-mono text-zinc-400">
+                    {orders.length} orders recorded
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100 mt-1">
+                  Chirala Territory Performance Stats
+                </h4>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {orders.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => seedSampleOrders()}
+                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    title="Populate realistic demo orders for testing"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Seed Sample Stats</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to clear all territory sales stats and order history? All metrics will reset to ₹0.')) {
+                        clearStats();
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    title="Clear All Stats & Orders"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                    <span>Clear All Stats</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* STATS ROW */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border shadow-sm">
                 <DollarSign className="w-5 h-5 text-emerald-500 mb-1" />
                 <span className="text-[10px] uppercase font-bold text-zinc-400">Total Sales</span>
-                <p className="text-xl font-black font-mono mt-1 text-zinc-800 dark:text-zinc-100">₹{revenueSum || 1420}</p>
+                <p className="text-xl font-black font-mono mt-1 text-zinc-800 dark:text-zinc-100">₹{revenueSum.toLocaleString()}</p>
               </div>
 
               <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border shadow-sm">
@@ -892,83 +996,297 @@ export default function AdminPanel() {
           )
         )}
 
-        {/* COUPON REDEMPTION SYSTEMS */}
+        {/* PROMOS & VOUCHERS SYSTEMS */}
         {activeTab === 'coupons' && (
-          <div className="space-y-4">
+          <div className="space-y-5 text-left">
             
-            {/* ADD COU FORM */}
-            <SuperAdminGuard showBadge={true}>
-              <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border shadow-sm">
-                <h4 className="text-xs font-black uppercase text-orange-500 mb-3">Issue Active Coupon Vouchers</h4>
-                
-                <form onSubmit={handleAddCoupon} className="space-y-3 text-xs">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-zinc-500 mb-0.5 font-bold">Voucher Code</label>
-                      <input 
-                        type="text" 
-                        required 
-                        placeholder="e.g. EXTRA50"
-                        value={newCouponCode}
-                        onChange={e => setNewCouponCode(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-zinc-800 p-2 rounded-xl border text-xs font-mono text-center font-black"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-zinc-500 mb-0.5 font-bold">Percent Discount (%)</label>
-                      <input 
-                        type="number" 
-                        required 
-                        value={newCouponVal}
-                        onChange={e => setNewCouponVal(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-zinc-800 p-2 rounded-xl border text-xs font-mono text-center"
-                      />
-                    </div>
-                  </div>
+            {/* PROMO ACTIONS HEADER BAR */}
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                    couponsList.length > 0 
+                      ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20' 
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                  }`}>
+                    {couponsList.length > 0 ? `${couponsList.length} Active Codes` : 'No Promo Codes'}
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-400">
+                    {banners.length} Carousel Banners
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100 mt-1 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-orange-500" /> Promotional Codes & Campaigns
+                </h4>
+              </div>
 
+              <div className="flex items-center gap-2 flex-wrap">
+                {couponsList.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => resetDefaultCoupons()}
+                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    title="Restore default mock promo codes"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Restore Promo Codes</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to clear all active promotional coupon codes? Users will not be able to apply promo codes until new ones are created.')) {
+                        clearAllCoupons();
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    title="Clear All Promo Voucher Codes"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                    <span>Clear All Promo Codes</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* ISSUE NEW PROMO VOUCHER FORM (DIRECT ADMIN ACCESS) */}
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-slate-200/90 dark:border-zinc-800 shadow-sm">
+              <h4 className="text-xs font-black uppercase text-orange-500 mb-3 flex items-center gap-1.5">
+                <Tag className="w-4 h-4" /> Issue New Promo Voucher Code
+              </h4>
+              
+              <form onSubmit={handleAddCoupon} className="space-y-3 text-xs">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-zinc-500 mb-0.5 font-bold">Short description</label>
+                    <label className="block text-zinc-500 mb-0.5 font-bold">Voucher Code</label>
                     <input 
                       type="text" 
                       required 
-                      placeholder="Saves flat ₹15 on North Indian meals"
-                      value={newCouponDesc}
-                      onChange={e => setNewCouponDesc(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-zinc-800 p-2 rounded-xl border"
+                      placeholder="e.g. FESTIVE50"
+                      value={newCouponCode}
+                      onChange={e => setNewCouponCode(e.target.value.toUpperCase())}
+                      className="w-full bg-slate-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-mono text-center font-black tracking-wider outline-none focus:border-orange-500"
                     />
                   </div>
-
-                  <button type="submit" className="w-full bg-orange-500 hover:bg-orange-655 text-white font-bold py-2.5 rounded-xl uppercase">
-                    Inject Token
-                  </button>
-                </form>
-              </div>
-            </SuperAdminGuard>
-
-            {/* LIVE COUPONS LIST */}
-            <div className="bg-white dark:bg-zinc-900 border rounded-3xl p-4 shadow-sm space-y-3">
-              <h4 className="text-xs font-bold text-zinc-450 uppercase">Active authorized Vouchers</h4>
-              
-              <div className="space-y-2">
-                {couponsList.map(item => (
-                  <div key={item.code} className="p-3 bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl flex items-center justify-between border">
-                    <div>
-                      <span className="font-mono font-bold text-xs border border-orange-500 text-orange-500 px-2 py-0.5 rounded bg-white">
-                        {item.code}
-                      </span>
-                      <p className="text-[10px] text-zinc-600 dark:text-zinc-350 mt-1">{item.description}</p>
-                    </div>
-                    <SuperAdminGuard fallback={<span className="text-[9px] text-zinc-400 bg-zinc-100 dark:bg-zinc-800/80 tracking-wide px-1.5 py-0.5 rounded uppercase font-bold border border-zinc-200 dark:border-zinc-700">Locked</span>}>
-                      <button 
-                        onClick={() => removeCoupon(item.code)}
-                        className="text-xs text-rose-500 font-extrabold uppercase hover:underline cursor-pointer"
-                      >
-                        Disable
-                      </button>
-                    </SuperAdminGuard>
+                  <div>
+                    <label className="block text-zinc-500 mb-0.5 font-bold">Discount Percentage (%)</label>
+                    <input 
+                      type="number" 
+                      required 
+                      min="1"
+                      max="100"
+                      value={newCouponVal}
+                      onChange={e => setNewCouponVal(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-mono text-center font-bold outline-none focus:border-orange-500"
+                    />
                   </div>
-                ))}
+                </div>
+
+                <div>
+                  <label className="block text-zinc-500 mb-0.5 font-bold">Short Description</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="e.g. Save flat 20% on all orders above ₹199"
+                    value={newCouponDesc}
+                    onChange={e => setNewCouponDesc(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="w-full bg-orange-500 hover:bg-orange-600 active:scale-98 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider transition shadow-sm cursor-pointer"
+                >
+                  Create &amp; Activate Promo Code
+                </button>
+              </form>
+            </div>
+
+            {/* LIVE PROMO VOUCHERS LIST */}
+            <div className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Percent className="w-3.5 h-3.5 text-orange-500" /> Active Promo Codes ({couponsList.length})
+                </h4>
+                {couponsList.length > 0 && (
+                  <span className="text-[10px] text-zinc-400">Click &ldquo;Clear&rdquo; to remove any promo</span>
+                )}
               </div>
+              
+              {couponsList.length === 0 ? (
+                <div className="py-8 text-center space-y-2 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl p-4">
+                  <Tag className="w-7 h-7 text-zinc-300 dark:text-zinc-600 mx-auto" />
+                  <p className="text-xs font-bold text-zinc-500">All promo codes have been cleared.</p>
+                  <p className="text-[11px] text-zinc-400">Users cannot apply vouchers until a new code is created or defaults are restored.</p>
+                  <button
+                    type="button"
+                    onClick={() => resetDefaultCoupons()}
+                    className="mt-2 px-3 py-1 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 rounded-xl text-xs font-bold transition hover:bg-orange-100 cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Restore Default Codes</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {couponsList.map(item => (
+                    <div 
+                      key={item.code} 
+                      className="p-3 bg-slate-50 dark:bg-zinc-800/80 rounded-2xl flex items-center justify-between border border-slate-200/70 dark:border-zinc-700/60 hover:border-orange-500/40 transition gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-xs border border-orange-500 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded bg-white dark:bg-zinc-900 tracking-wider">
+                            {item.code}
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                            {item.value}% OFF
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-600 dark:text-zinc-300 mt-1 font-medium truncate">
+                          {item.description}
+                        </p>
+                      </div>
+
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          removeCoupon(item.code);
+                        }}
+                        className="text-xs bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 px-2.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shrink-0 cursor-pointer active:scale-95"
+                        title={`Clear promo code ${item.code}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Clear</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* PROMOTIONAL CAROUSEL BANNERS (SPOTLIGHT PROMOS) */}
+            <div className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-5 shadow-sm space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" /> Home Screen Spotlight Promos ({banners.length})
+                  </h4>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    Clear or toggle promotional banners displayed at the top of the Customer home screen
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {banners.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => resetDefaultBanners()}
+                      className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Restore Banners</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to clear all promotional carousel banners? The home screen will have no banner carousel.')) {
+                          clearAllBanners();
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Clear All Banners</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {banners.length === 0 ? (
+                <div className="py-8 text-center space-y-2 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl p-4">
+                  <Flame className="w-7 h-7 text-zinc-300 dark:text-zinc-600 mx-auto" />
+                  <p className="text-xs font-bold text-zinc-500">All promotional banners have been cleared.</p>
+                  <p className="text-[11px] text-zinc-400">Home screen banner carousel is currently hidden.</p>
+                  <button
+                    type="button"
+                    onClick={() => resetDefaultBanners()}
+                    className="mt-2 px-3 py-1 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 rounded-xl text-xs font-bold transition hover:bg-orange-100 cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Restore Default Banners</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+                  {banners.map(b => (
+                    <div 
+                      key={b.id} 
+                      className={`p-3 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                        b.enabled 
+                          ? 'bg-slate-50 dark:bg-zinc-800/80 border-slate-200/80 dark:border-zinc-700/60' 
+                          : 'bg-zinc-100/50 dark:bg-zinc-900/50 border-zinc-200/50 dark:border-zinc-800 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {b.image ? (
+                          <img 
+                            src={b.image} 
+                            alt={b.title} 
+                            className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-zinc-700" 
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+                            <Flame className="w-5 h-5 text-orange-500" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate">
+                              {b.title}
+                            </span>
+                            {b.discount && (
+                              <span className="text-[9px] bg-red-500 text-white font-black px-1.5 py-0.2 rounded font-mono shrink-0">
+                                {b.discount}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-zinc-400 dark:text-zinc-400 truncate mt-0.5">
+                            {b.description || `Action: ${b.actionType} (${b.actionValue})`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => enableBanner(b.id, !b.enabled)}
+                          className={`text-[10px] font-bold px-2 py-1 rounded-lg transition cursor-pointer ${
+                            b.enabled 
+                              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' 
+                              : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
+                          }`}
+                        >
+                          {b.enabled ? 'Active' : 'Paused'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteBanner(b.id);
+                          }}
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                          title="Clear this promo banner"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>

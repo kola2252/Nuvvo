@@ -9,7 +9,7 @@ import { motion } from 'motion/react';
 import { 
   MapPin, Search, Tag, Star, Clock, Filter, Sparkles, ChevronRight, ChevronLeft,
   Heart, Plus, Minus, Check, Moon, Sun, ShieldCheck, HeartCrack, Compass,
-  Bell, BellOff, Trash2, ThumbsUp, X, Mic, MicOff, History, Smartphone
+  Bell, BellOff, Trash2, ThumbsUp, X, Mic, MicOff, Store, UtensilsCrossed
 } from 'lucide-react';
 import { CATEGORIES, CATEGORY_DETAILS } from '../data/catalog';
 import { FoodItem, VegIndicator } from '../types';
@@ -18,8 +18,6 @@ import AddressSelectorModal from './AddressSelectorModal';
 import { useBannerActions } from './BannerSlider';
 import PromotionalCarousel from './PromotionalCarousel';
 import { LazyImage } from './LazyImage';
-import PWAInstallBanner from './PWAInstallBanner';
-import AndroidInstallModal from './AndroidInstallModal';
 
 export default function Home() {
   const { 
@@ -47,82 +45,29 @@ export default function Home() {
   const [selectedRestaurant, setSelectedRestaurant] = useState<any>(null);
   const [modalTab, setModalTab] = useState<'overview' | 'reviews'>('overview');
   const [reviewStarFilter, setReviewStarFilter] = useState<number | 'all'>('all');
-  const [showAndroidModal, setShowAndroidModal] = useState(false);
 
-  // Recent Searches state: stores the last 5 search queries made by the user
-  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('nuvvo_recent_searches');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.slice(0, 5);
-        }
-      }
-    } catch {}
-    return ['Biryani', 'Filter Coffee', 'Dosa', 'Butter Chicken', 'Burger'];
-  });
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
-
-  const saveRecentSearch = (query: string) => {
-    const trimmed = query.trim();
-    if (!trimmed || trimmed.length < 2) return;
-    setRecentSearches(prev => {
-      const filtered = prev.filter(item => item.toLowerCase() !== trimmed.toLowerCase());
-      const updated = [trimmed, ...filtered].slice(0, 5);
-      try {
-        localStorage.setItem('nuvvo_recent_searches', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  };
-
-  const removeRecentSearch = (itemToRemove: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setRecentSearches(prev => {
-      const updated = prev.filter(item => item !== itemToRemove);
-      try {
-        localStorage.setItem('nuvvo_recent_searches', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  };
-
-  const clearAllRecentSearches = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setRecentSearches([]);
+  // Clear legacy recent searches from storage to keep top position pristine
+  useEffect(() => {
     try {
       localStorage.removeItem('nuvvo_recent_searches');
     } catch {}
-  };
-
-  const handleSelectRecentSearch = (query: string) => {
-    setLocalSearch(query);
-    setSelectedCategory(null);
-    saveRecentSearch(query);
-    setIsSearchFocused(false);
-  };
-
-  // Close search dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
-        setIsSearchFocused(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Debounced auto-save of typed search queries
+  // Global search input ref & filter tabs
+  const globalSearchInputRef = useRef<HTMLInputElement>(null);
+  const [searchTabFilter, setSearchTabFilter] = useState<'all' | 'restaurants' | 'items'>('all');
+
+  // Keyboard shortcut (⌘K / Ctrl+K) to focus global search input
   useEffect(() => {
-    if (!localSearch || localSearch.trim().length < 3) return;
-    const timer = setTimeout(() => {
-      saveRecentSearch(localSearch);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [localSearch]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        globalSearchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
   // Dynamic Meal Tag Categories
   const [selectedMealTag, setSelectedMealTag] = useState<string>('All');
@@ -302,7 +247,6 @@ export default function Home() {
         const cleaned = resultTranscript.replace(/[.*+?^${}()|[\]\\]/g, '').trim();
         setLocalSearch(cleaned);
         setSelectedCategory(null);
-        saveRecentSearch(cleaned);
         setVoiceToast(`🔍 Voice Searched for: "${cleaned}"`);
         setTimeout(() => setVoiceToast(null), 3500);
       }
@@ -466,6 +410,27 @@ export default function Home() {
 
     return list.slice(0, 48); // Lazy windowing of first 48 records to maintain high CPU speed
   }, [foodCatalog, localSearch, selectedCategory, vegOnly, highRated, sortBy, restaurants, selectedMealTag, tagFilteredItems]);
+
+  // Global search direct name match collections
+  const matchingRestaurantsByName = useMemo(() => {
+    if (!localSearch.trim()) return [];
+    const q = localSearch.trim().toLowerCase();
+    return customerRestaurants.filter(r => 
+      r.name.toLowerCase().includes(q) || 
+      (r.cuisines && r.cuisines.some(c => c.toLowerCase().includes(q))) ||
+      (r.businessType && r.businessType.toLowerCase().includes(q))
+    );
+  }, [customerRestaurants, localSearch]);
+
+  const matchingFoodItemsByName = useMemo(() => {
+    if (!localSearch.trim()) return [];
+    const q = localSearch.trim().toLowerCase();
+    return filteredCatalog.filter(item => 
+      item.name.toLowerCase().includes(q) || 
+      item.category.toLowerCase().includes(q) ||
+      (item.description && item.description.toLowerCase().includes(q))
+    );
+  }, [filteredCatalog, localSearch]);
 
   // Distinct section filters
   const trendingMeals = useMemo(() => {
@@ -888,6 +853,13 @@ export default function Home() {
                       {rest.cuisines?.join(', ')}
                     </p>
                     
+                    {query && rest.name.toLowerCase().includes(query) && (
+                      <div className="mt-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/25 rounded-md inline-flex items-center gap-1 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold max-w-full">
+                        <Store className="w-3 h-3 shrink-0" />
+                        <span className="truncate">Matches Restaurant Name</span>
+                      </div>
+                    )}
+
                     {matchedDish && (
                       <div className="mt-1.5 px-2 py-1 bg-orange-550/5 dark:bg-orange-950/10 border border-dashed border-orange-500/25 rounded-lg flex items-center gap-1 text-[9px] text-orange-600 dark:text-orange-400 font-bold max-w-full">
                         <span className="text-xs">🍳</span>
@@ -1320,15 +1292,6 @@ export default function Home() {
           </button>
  
           <button 
-            onClick={() => setShowAndroidModal(true)}
-            aria-label="Android App & APK"
-            title="Install Android App / Generate APK"
-            className="p-2.5 bg-slate-150 dark:bg-zinc-800 hover:bg-orange-500/10 hover:text-orange-500 rounded-full text-zinc-600 dark:text-zinc-300 cursor-pointer active:scale-95 transition-colors"
-          >
-            <Smartphone className="w-4.5 h-4.5" />
-          </button>
-
-          <button 
             onClick={toggleDarkMode}
             aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
             className="p-2.5 bg-slate-150 dark:bg-zinc-800 hover:bg-slate-230/80 rounded-full text-zinc-600 dark:text-amber-400 cursor-pointer active:scale-95"
@@ -1529,49 +1492,59 @@ export default function Home() {
 
       <div className="p-4 space-y-6 max-w-7xl mx-auto">
         
-        {/* Android PWA Install Banner */}
-        <PWAInstallBanner />
-        
-        {/* Swiggy-like Search-as-you-type bar with active presets & Recent Searches */}
-        <div className="relative" ref={searchContainerRef}>
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5 animate-pulse" />
+        {/* Global Search Input Field at the Top of Home Screen */}
+        <div className="relative group">
+          <label htmlFor="global-search-input" className="sr-only">
+            Search restaurants and food items by name
+          </label>
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 w-5 h-5 transition-transform group-focus-within:scale-110" />
           <input 
+            ref={globalSearchInputRef}
+            id="global-search-input"
+            name="globalSearch"
             type="text"
-            placeholder="Search approximately 200 dishes, cuisines, categories..."
+            placeholder="Search restaurants and food items by name..."
             value={localSearch}
-            aria-label="Search approximately 200 dishes, cuisines, and categories"
-            onFocus={() => setIsSearchFocused(true)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                saveRecentSearch(localSearch);
-                setIsSearchFocused(false);
-              }
-            }}
+            aria-label="Search restaurants and food items by name"
             onChange={e => {
               const val = e.target.value;
               setLocalSearch(val);
               if (val.trim() !== '') {
                 setSelectedCategory(null);
+              } else {
+                setSearchTabFilter('all');
               }
             }}
-            className={`w-full bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 pl-12 pr-28 py-3.5 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-md shadow-zinc-200/5 focus:outline-none focus:border-${currentTheme.primaryColor} text-sm font-medium transition-all`}
+            className={`w-full bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 pl-12 pr-32 py-3.5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-sm shadow-zinc-200/50 dark:shadow-none focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm font-medium transition-all`}
           />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            {/* Quick ⌘K hint badge on desktop */}
+            {!localSearch && (
+              <span className="hidden md:inline-flex items-center text-[10px] font-mono text-zinc-400 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-200/60 dark:border-zinc-750 mr-1 select-none">
+                ⌘K
+              </span>
+            )}
+
             {localSearch && (
               <button 
+                type="button"
                 onClick={() => {
                   setLocalSearch('');
+                  setSearchTabFilter('all');
+                  globalSearchInputRef.current?.focus();
                 }}
-                aria-label="Clear search description"
-                className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-xs font-black cursor-pointer px-1.5 transition"
+                aria-label="Clear search input"
+                className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-xs font-bold cursor-pointer transition flex items-center"
+                title="Clear Search"
               >
-                Clear
+                <X className="w-4 h-4" />
               </button>
             )}
             
             {/* Elegant Voice-to-Text Button */}
             <button
               id="voice-search-button"
+              type="button"
               onClick={handleVoiceSearchToggle}
               aria-label={isListening ? "Stop voice input recognition" : "Search using voice input speech"}
               className={`p-2 rounded-xl transition-all duration-300 flex items-center justify-center cursor-pointer ${
@@ -1602,81 +1575,7 @@ export default function Home() {
               <span>{voiceToast}</span>
             </div>
           )}
-
-          {/* Interactive Recent Searches Dropdown Menu (last 5 queries) */}
-          {isSearchFocused && recentSearches.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-3.5 z-40 animate-fadeIn">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-zinc-800">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200">
-                  <History className="w-3.5 h-3.5 text-orange-500" />
-                  <span>Recent Searches</span>
-                </div>
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={clearAllRecentSearches}
-                  className="text-[11px] font-semibold text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
-                >
-                  Clear all
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                {recentSearches.map((query) => (
-                  <div
-                    key={query}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => handleSelectRecentSearch(query)}
-                    className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-orange-500/10 cursor-pointer group transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 text-xs text-zinc-700 dark:text-zinc-200">
-                      <Clock className="w-3.5 h-3.5 text-zinc-400 group-hover:text-orange-500 transition-colors" />
-                      <span className="font-medium group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                        {query}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={(e) => removeRecentSearch(query, e)}
-                      title={`Remove "${query}"`}
-                      aria-label={`Remove recent search query ${query}`}
-                      className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 transition cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-
-        {/* Quick Recent Searches Chips Row to enhance mobile/desktop navigation speed */}
-        {!localSearch && recentSearches.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 -mt-2">
-            <span className="flex items-center gap-1 text-[11px] font-bold text-zinc-400 dark:text-zinc-500 shrink-0 mr-0.5">
-              <History className="w-3 h-3 text-orange-500" /> Recent:
-            </span>
-            {recentSearches.map((query) => (
-              <div
-                key={query}
-                onClick={() => handleSelectRecentSearch(query)}
-                className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-orange-100 dark:hover:bg-orange-950/40 text-zinc-650 dark:text-zinc-300 hover:text-orange-600 dark:hover:text-orange-400 border border-slate-200/60 dark:border-zinc-800 transition-all shrink-0 cursor-pointer shadow-2xs group"
-              >
-                <span className="font-medium">{query}</span>
-                <button
-                  type="button"
-                  onClick={(e) => removeRecentSearch(query, e)}
-                  title="Remove query"
-                  className="hover:text-red-500 text-zinc-400 p-0.5 rounded cursor-pointer"
-                >
-                  <X className="w-2.5 h-2.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Dynamic Meal Tag Category Navigation Bar */}
         <div className="p-3.5 rounded-3xl bg-zinc-50 dark:bg-zinc-950/40 border border-slate-150 dark:border-zinc-900/60 shadow-sm">
@@ -2002,26 +1901,151 @@ export default function Home() {
 
         {/* CONDITIONAL LAYOUTS */}
         {localSearch ? (
-          <div className="space-y-8 animate-fadeIn">
-            <div className={`p-4 rounded-3xl ${currentTheme.lightBgClass} border border-dashed ${currentTheme.borderClass}/30 flex items-center justify-between`}>
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🔍</span>
-                <div className="leading-tight text-left">
-                  <span className="text-xs font-black uppercase tracking-wider text-zinc-500 block">Search Mode Active</span>
-                  <p className={`text-xs font-bold ${currentTheme.textClass}`}>
-                    Prioritizing matching available dishes first, followed by regional kitchens.
-                  </p>
+          <div className="space-y-6 animate-fadeIn">
+            {/* Global Search Results Navigation Header */}
+            <div className="p-4 rounded-3xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 shadow-sm space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 rounded-2xl bg-orange-500/10 text-orange-500 shrink-0">
+                    <Search className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-full">
+                        Global Search Active
+                      </span>
+                      <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                        {matchingRestaurantsByName.length + matchingFoodItemsByName.length} total matches
+                      </span>
+                    </div>
+                    <p className="text-sm font-black text-zinc-900 dark:text-zinc-100 mt-0.5">
+                      Showing results for &ldquo;<span className="text-orange-600 dark:text-orange-400">{localSearch}</span>&rdquo;
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocalSearch('');
+                    setSearchTabFilter('all');
+                    globalSearchInputRef.current?.focus();
+                  }}
+                  className="self-start sm:self-auto text-xs bg-slate-100 dark:bg-zinc-800 hover:bg-red-50 dark:hover:bg-red-950/30 text-zinc-600 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Clear Search</span>
+                </button>
+              </div>
+
+              {/* Segmented Filter Controls for Restaurants vs Food Items */}
+              <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-zinc-800 overflow-x-auto scrollbar-none">
+                <button
+                  type="button"
+                  onClick={() => setSearchTabFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                    searchTabFilter === 'all'
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700'
+                  }`}
+                >
+                  <span>All Results</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${searchTabFilter === 'all' ? 'bg-white/20 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'}`}>
+                    {matchingRestaurantsByName.length + matchingFoodItemsByName.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSearchTabFilter('restaurants')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                    searchTabFilter === 'restaurants'
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700'
+                  }`}
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>Restaurants</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${searchTabFilter === 'restaurants' ? 'bg-white/20 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'}`}>
+                    {matchingRestaurantsByName.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSearchTabFilter('items')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                    searchTabFilter === 'items'
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700'
+                  }`}
+                >
+                  <UtensilsCrossed className="w-3.5 h-3.5" />
+                  <span>Food Items</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${searchTabFilter === 'items' ? 'bg-white/20 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'}`}>
+                    {matchingFoodItemsByName.length}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Results Display */}
+            {matchingRestaurantsByName.length === 0 && matchingFoodItemsByName.length === 0 ? (
+              <div className="text-center py-14 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 flex flex-col items-center justify-center space-y-3">
+                <div className="p-3.5 bg-orange-500/10 text-orange-500 rounded-2xl">
+                  <Search className="w-8 h-8" />
+                </div>
+                <h4 className="text-base font-black text-zinc-800 dark:text-zinc-100">
+                  No restaurants or food items found
+                </h4>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md">
+                  We couldn&apos;t find any restaurant or food item matching &ldquo;{localSearch}&rdquo;. Try another name or click one of the popular options below:
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center pt-2">
+                  {['Biryani', 'Pizza', 'Burger', 'Dosa', 'Mandi', 'Coffee', 'Paradise', 'Bakery'].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => {
+                        setLocalSearch(suggestion);
+                        setSearchTabFilter('all');
+                      }}
+                      className="px-3 py-1.5 bg-slate-100 dark:bg-zinc-800 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <button
-                onClick={() => setLocalSearch('')}
-                className="text-[10px] bg-white dark:bg-zinc-800 border border-slate-100 dark:border-zinc-800 px-2.5 py-1.5 rounded-xl font-black uppercase tracking-wider shadow-sm text-zinc-500 hover:text-red-550 transition cursor-pointer"
-              >
-                Clear Search
-              </button>
-            </div>
-            {foodCatalogSectionJSX}
-            {restaurantsSectionJSX}
+            ) : (
+              <>
+                {(searchTabFilter === 'all' || searchTabFilter === 'items') && matchingFoodItemsByName.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-black text-zinc-900 dark:text-zinc-50 tracking-tight flex items-center gap-2">
+                        <UtensilsCrossed className="w-4 h-4 text-orange-500" />
+                        <span>Food Items matching &ldquo;{localSearch}&rdquo;</span>
+                        <span className="text-xs font-mono text-zinc-400">({matchingFoodItemsByName.length})</span>
+                      </h3>
+                    </div>
+                    {foodCatalogSectionJSX}
+                  </div>
+                )}
+
+                {(searchTabFilter === 'all' || searchTabFilter === 'restaurants') && matchingRestaurantsByName.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-black text-zinc-900 dark:text-zinc-50 tracking-tight flex items-center gap-2">
+                        <Store className="w-4 h-4 text-orange-500" />
+                        <span>Restaurants matching &ldquo;{localSearch}&rdquo;</span>
+                        <span className="text-xs font-mono text-zinc-400">({matchingRestaurantsByName.length})</span>
+                      </h3>
+                    </div>
+                    {restaurantsSectionJSX}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         ) : (
           <>
@@ -2397,12 +2421,6 @@ export default function Home() {
       <AddressSelectorModal 
         isOpen={showAddressModal} 
         onClose={() => setShowAddressModal(false)} 
-      />
-
-      {/* Android App & APK Installation Center Modal */}
-      <AndroidInstallModal 
-        isOpen={showAndroidModal}
-        onClose={() => setShowAndroidModal(false)}
       />
 
     </div>

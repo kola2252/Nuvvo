@@ -9,7 +9,7 @@ import {
   DeliveryPartnerProfile, FranchiseApplication, Address, Coupon, AuditLog,
   AppNotification, Banner, PointsTransaction, RestaurantReview, ScheduledNotification,
   RiderEarningRecord, RiderPayout, SimulatedEmail, MerchantPayout, AppTheme,
-  DesignatedAdmin, AdminPermissions, PaymentMethodType
+  DesignatedAdmin, AdminPermissions, PaymentMethodType, VegIndicator
 } from '../types';
 import { FOOD_CATALOG, RESTAURANTS, MOCK_COUPONS } from '../data/catalog';
 import { generatePreloadedChiralaRestaurants, CHIRALA_TOP13_FOOD_ITEMS } from '../data/chiralaPartners';
@@ -166,9 +166,15 @@ interface AppContextProps {
   authenticateSuperAdmin: () => void;
   wipeAllData: () => void;
   clearSystemCache: () => void;
+  clearStats: () => void;
+  seedSampleOrders: () => void;
   couponsList: Coupon[];
   addNewCoupon: (coupon: Coupon) => void;
   deleteCoupon: (code: string) => void;
+  clearAllCoupons: () => void;
+  resetDefaultCoupons: () => void;
+  clearAllBanners: () => void;
+  resetDefaultBanners: () => void;
   logs: AuditLog[];
   addAuditLog: (action: string, details: string) => void;
   clearLogs: () => void;
@@ -878,7 +884,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     ]);
   });
-  const [couponsList, setCouponsList] = useState<Coupon[]>(MOCK_COUPONS);
+  const [couponsList, setCouponsList] = useState<Coupon[]>(() => {
+    return safeParse<Coupon[]>('nuvvo_coupons', MOCK_COUPONS);
+  });
+
+  useEffect(() => {
+    localStorage.setItem('nuvvo_coupons', JSON.stringify(couponsList));
+  }, [couponsList]);
   const [logs, setLogs] = useState<AuditLog[]>(() => {
     return safeParse<AuditLog[]>('nuvvo_audit_logs', []);
   });
@@ -1134,7 +1146,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [banners]);
 
   const addBanner = (newB: Omit<Banner, 'id'>) => {
-    if (!checkSuperAdminPermission('Add Banners')) return;
     const bannerWithId: Banner = {
       ...newB,
       id: `banner_${Date.now()}`
@@ -1147,7 +1158,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateBanner = (id: string, updatedFields: Partial<Banner>) => {
-    if (!checkSuperAdminPermission('Update Banners')) return;
     setBanners(prev => {
       const updated = prev.map(b => b.id === id ? { ...b, ...updatedFields } : b);
       return updated.sort((a, b) => a.order - b.order);
@@ -1156,19 +1166,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteBanner = (id: string) => {
-    if (!checkSuperAdminPermission('Delete Banners')) return;
     setBanners(prev => prev.filter(b => b.id !== id));
     addAuditLog('Banner Operation', `Deleted banner ID: ${id}`);
   };
 
+  const clearAllBanners = () => {
+    setBanners([]);
+    addAuditLog('Banner Operation', 'Admin cleared all promotional banners');
+  };
+
+  const resetDefaultBanners = () => {
+    setBanners(INITIAL_BANNERS);
+    addAuditLog('Banner Operation', 'Admin restored default promotional banners');
+  };
+
   const enableBanner = (id: string, enabled: boolean) => {
-    if (!checkSuperAdminPermission('Toggle Banner Active Status')) return;
     setBanners(prev => prev.map(b => b.id === id ? { ...b, enabled } : b));
     addAuditLog('Banner Operation', `${enabled ? 'Enabled' : 'Disabled'} banner ID: ${id}`);
   };
 
   const reorderBanners = (reordered: Banner[]) => {
-    if (!checkSuperAdminPermission('Reorder Banners')) return;
     const sequentiallyOrdered = reordered.map((b, idx) => ({
       ...b,
       order: idx + 1
@@ -3496,17 +3513,152 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.open(whatsappUrl, '_blank');
   };
 
-  // Coupon Manager
+  // Coupon & Promo Manager
   const addNewCoupon = (coupon: Coupon) => {
-    if (!checkSuperAdminPermission('Add Coupon Code')) return;
-    setCouponsList(prev => [...prev, coupon]);
+    setCouponsList(prev => [...prev.filter(c => c.code.toUpperCase() !== coupon.code.toUpperCase()), coupon]);
     addAuditLog('Coupon Added', `Systemic discount register updated with active coupon code: ${coupon.code}`);
   };
 
   const deleteCoupon = (code: string) => {
-    if (!checkSuperAdminPermission('Delete Coupon Code')) return;
-    setCouponsList(prev => prev.filter(c => c.code !== code));
-    addAuditLog('Coupon Deleted', `Removed systemic coupon voucher from circulation database: ${code}`);
+    setCouponsList(prev => prev.filter(c => c.code.toUpperCase() !== code.toUpperCase()));
+    addAuditLog('Coupon Deleted', `Removed systemic coupon voucher: ${code}`);
+  };
+
+  const clearAllCoupons = () => {
+    setCouponsList([]);
+    localStorage.setItem('nuvvo_coupons', JSON.stringify([]));
+    addAuditLog('Promos Cleared', 'Admin cleared all active coupon vouchers from circulation.');
+  };
+
+  const resetDefaultCoupons = () => {
+    setCouponsList(MOCK_COUPONS);
+    localStorage.setItem('nuvvo_coupons', JSON.stringify(MOCK_COUPONS));
+    addAuditLog('Promos Reset', 'Admin restored default promo voucher codes.');
+  };
+
+  // Stats & Orders Management
+  const clearStats = () => {
+    setOrders([]);
+    localStorage.removeItem('nuvvo_orders');
+    addAuditLog('Stats Cleared', 'Admin cleared all territory sales stats and order history.');
+  };
+
+  const seedSampleOrders = () => {
+    const sampleList: Order[] = [
+      {
+        id: `ord_${Date.now() - 3600000}`,
+        customerId: 'cust_sample_1',
+        customerPhone: '9848022338',
+        customerName: 'Suresh Varma',
+        items: [
+          {
+            foodItem: {
+              id: 'dish_biryani_1',
+              name: 'Special Chicken Dum Biryani',
+              description: 'Aromatic basmati rice cooked with tender chicken and spices',
+              vegIndicator: VegIndicator.NON_VEG,
+              rating: 4.8,
+              reviewsCount: 320,
+              prepTime: 25,
+              price: 280,
+              image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=400&q=80',
+              category: 'Biryani',
+              subcategory: 'Main Course',
+              ingredients: ['Basmati Rice', 'Chicken', 'Spices'],
+              spiceLevel: 'Medium',
+              reviews: []
+            },
+            quantity: 2,
+            selectedCustomizations: {}
+          }
+        ],
+        subtotal: 560,
+        discount: 50,
+        deliveryFee: 30,
+        packagingFee: 15,
+        tax: 28,
+        tip: 20,
+        finalAmount: 603,
+        status: 'delivered',
+        address: {
+          id: 'addr_1',
+          type: 'Home',
+          flatNo: 'Flat 302, Sri Krishna Apts',
+          area: 'Bypass Road',
+          city: 'Chirala',
+          pincode: '523155',
+          isManual: true,
+          customerName: 'Suresh Varma',
+          mobileNumber: '9848022338',
+          houseNumber: 'Flat 302',
+          streetName: 'Sri Krishna Apts, Bypass Road',
+          locality: 'Bypass Road'
+        },
+        paymentMethod: 'UPI',
+        paymentStatus: 'success',
+        date: new Date(Date.now() - 3600000).toISOString(),
+        eta: 0,
+        trackingHistory: [{ status: 'delivered', time: new Date(Date.now() - 3600000).toLocaleTimeString() }]
+      },
+      {
+        id: `ord_${Date.now() - 1800000}`,
+        customerId: 'cust_sample_2',
+        customerPhone: '9988776655',
+        customerName: 'Ananya Reddy',
+        items: [
+          {
+            foodItem: {
+              id: 'dish_dosa_1',
+              name: 'Butter Masala Dosa',
+              description: 'Crispy golden dosa filled with spiced potato masala and topped with butter',
+              vegIndicator: VegIndicator.VEG,
+              rating: 4.6,
+              reviewsCount: 180,
+              prepTime: 15,
+              price: 90,
+              image: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80',
+              category: 'South Indian',
+              subcategory: 'Tiffins',
+              ingredients: ['Rice Batter', 'Potato', 'Butter'],
+              spiceLevel: 'Medium',
+              reviews: []
+            },
+            quantity: 2,
+            selectedCustomizations: {}
+          }
+        ],
+        subtotal: 180,
+        discount: 0,
+        deliveryFee: 25,
+        packagingFee: 10,
+        tax: 10,
+        tip: 0,
+        finalAmount: 225,
+        status: 'on_the_way',
+        address: {
+          id: 'addr_2',
+          type: 'Work',
+          flatNo: 'Shop 14, Main Bazaar',
+          area: 'Clock Tower',
+          city: 'Chirala',
+          pincode: '523155',
+          isManual: true,
+          customerName: 'Ananya Reddy',
+          mobileNumber: '9988776655',
+          houseNumber: 'Shop 14',
+          streetName: 'Main Bazaar',
+          locality: 'Clock Tower'
+        },
+        paymentMethod: 'PhonePe',
+        paymentStatus: 'success',
+        date: new Date(Date.now() - 1800000).toISOString(),
+        eta: 12,
+        trackingHistory: [{ status: 'on_the_way', time: new Date(Date.now() - 1800000).toLocaleTimeString() }]
+      }
+    ];
+    setOrders(sampleList);
+    localStorage.setItem('nuvvo_orders', JSON.stringify(sampleList));
+    addAuditLog('Sample Orders Seeded', 'Admin populated sample orders for territory analytics.');
   };
 
   // Designated Admin permission management
@@ -3624,14 +3776,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       franchiseApplications, submitFranchiseForm, updateFranchiseStatus,
       isSuperAdmin, isSuperAdminAuthenticated, verifySuperAdminOtp, setSuperAdminAuthenticated,
       authenticateSuperAdmin, wipeAllData, clearSystemCache,
-      couponsList, addNewCoupon, deleteCoupon,
+      clearStats, seedSampleOrders,
+      couponsList, addNewCoupon, deleteCoupon, clearAllCoupons, resetDefaultCoupons,
       logs, addAuditLog, clearLogs,
       designatedAdmins, toggleAdminPermission, addDesignatedAdmin, deleteDesignatedAdmin,
       toggleRestaurantActiveStatus, approveRestaurant, registerNewRestaurantRequest,
       clickToWhatsAppSupport, clickToWhatsAppFoodBooking,
 
       // Dynamic Banner System
-      banners, addBanner, updateBanner, deleteBanner, enableBanner, reorderBanners,
+      banners, addBanner, updateBanner, deleteBanner, clearAllBanners, resetDefaultBanners, enableBanner, reorderBanners,
 
       notifications, markNotificationAsRead, clearAllNotifications, requestNotificationPermission, notificationPermission,
       orderUpdatesEnabled, promotionalAlertsEnabled, deliveryUpdatesEnabled, 

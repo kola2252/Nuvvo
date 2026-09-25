@@ -12,11 +12,10 @@ import {
   History, RefreshCw, ChevronDown, ChevronLeft, CheckCircle, Edit, Plus, X, Map, Check,
   Bell, Sparkles, CreditCard, Lock, Camera, Star, ShoppingBag, Search,
   Share2, Copy, Gift, Users, Wallet, Receipt, Printer, Download,
-  MessageSquare, Send, Clock, ChevronUp, Mail, Smartphone
+  MessageSquare, Send, Clock, ChevronUp, Mail
 } from 'lucide-react';
 import { Address, SavedCard, SavedUPI } from '../types';
 import OrderHistory from './OrderHistory';
-import AndroidInstallModal from './AndroidInstallModal';
 
 export default function AccountScreen() {
   const { 
@@ -35,7 +34,6 @@ export default function AccountScreen() {
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [selectedPreviewThemeId, setSelectedPreviewThemeId] = useState<string>(currentTheme.id);
   const [showThemeAppliedMessage, setShowThemeAppliedMessage] = useState<boolean>(false);
-  const [showAndroidModal, setShowAndroidModal] = useState(false);
 
   // Help & Support States
   const [showCallRoutingOptions, setShowCallRoutingOptions] = useState(false);
@@ -2103,43 +2101,6 @@ Thank you for dining with Nuvvo Gourmet!`;
                   )}
                 </AnimatePresence>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ANDROID APP & APK CENTER CARD */}
-        <div id="android-apk-settings" className="bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent border border-orange-500/20 dark:border-orange-500/30 rounded-3xl p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-orange-500/15 pb-2.5">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-orange-500 text-white rounded-xl">
-                <Smartphone className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-xs font-black text-zinc-950 dark:text-zinc-50 uppercase tracking-wider">
-                  Android App & APK
-                </h4>
-                <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Official Mobile App & APK Generator</p>
-              </div>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white text-[9px] font-mono font-black uppercase">
-              WebAPK / APK
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Install Nuvvo directly to your Android device with native home screen icon, instant push alerts, and offline caching, or generate a standalone signed <strong>.APK</strong> file.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAndroidModal(true)}
-                className="flex-1 py-2.5 px-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl font-black text-xs shadow-md shadow-orange-500/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span>Open Android APK Center</span>
-              </button>
             </div>
           </div>
         </div>
@@ -4269,12 +4230,6 @@ Thank you for dining with Nuvvo Gourmet!`;
           );
         })()}
       </AnimatePresence>
-
-      {/* Android App & APK Installation Center Modal */}
-      <AndroidInstallModal 
-        isOpen={showAndroidModal}
-        onClose={() => setShowAndroidModal(false)}
-      />
     </div>
   );
 }

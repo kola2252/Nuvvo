@@ -18,7 +18,7 @@ import {
   PhoneCall, Users, Compass, HelpCircle, FileText, Check, Plus, Upload,
   Edit, X, Bike, MapPin, Star, Award, MessageSquare, Phone, TrendingUp, Sparkles, Clock, Lock, AlertCircle,
   Image, Calendar, ArrowUp, ArrowDown, Eye, EyeOff, ArrowUpRight, Download, Percent, Activity, ChevronRight, ChevronDown, Printer, Share2, DollarSign, ShoppingBag, BarChart2, PieChart,
-  IndianRupee, CalendarDays, Wallet, Clipboard, Landmark, LayoutDashboard, Mail
+  IndianRupee, CalendarDays, Wallet, Clipboard, Landmark, LayoutDashboard, Mail, Settings
 } from 'lucide-react';
 
 export default function SuperAdminPanel() {
@@ -51,7 +51,8 @@ export default function SuperAdminPanel() {
     payoutEmails, processMerchantPayout, merchantPayouts, approveMerchantPayout,
 
     // Designated Admin and Permissions
-    designatedAdmins, toggleAdminPermission, addDesignatedAdmin, deleteDesignatedAdmin
+    designatedAdmins, toggleAdminPermission, addDesignatedAdmin, deleteDesignatedAdmin,
+    setCurrentPage
   } = useApp();
 
   const [otpCode, setOtpCode] = useState('');
@@ -1033,6 +1034,59 @@ export default function SuperAdminPanel() {
       </div>
 
       <div className="p-4 max-w-2xl mx-auto space-y-4">
+        
+        {/* MULTI-ROLE PORTAL BRIDGES (TOP PLACE IN SUPER ADMIN CHAMBER) */}
+        <div id="super-admin-portal-bridges" className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-black text-zinc-950 dark:text-zinc-50 tracking-tight uppercase flex items-center gap-1.5">
+              <Settings className="w-4 h-4 text-red-500" /> Multi-Role Portal Bridges
+            </h4>
+            <span className="text-[9px] bg-red-500/10 text-red-600 dark:text-red-400 font-black px-2 py-0.5 rounded-full font-mono uppercase">
+              Super Admin Chamber
+            </span>
+          </div>
+          <p className="text-[10px] text-zinc-400 leading-snug">
+            Instantly transition your UI view into different sections of the Nuvvo Ecosystem below:
+          </p>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+            <button 
+              type="button"
+              onClick={() => setCurrentPage('home')}
+              className="p-3 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 border border-emerald-200/70 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer transition active:scale-95 flex flex-col items-center gap-1 shadow-2xs"
+            >
+              <span className="text-base">🛍️</span>
+              <span>Customer</span>
+            </button>
+
+            <button 
+              type="button"
+              onClick={() => setCurrentPage('partner')}
+              className="p-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 border border-indigo-200/70 dark:border-indigo-800/40 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer transition active:scale-95 flex flex-col items-center gap-1 shadow-2xs"
+            >
+              <span className="text-base">🏍️</span>
+              <span>Partner</span>
+            </button>
+            
+            <button 
+              type="button"
+              onClick={() => setCurrentPage('franchise')}
+              className="p-3 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/40 border border-amber-200/70 dark:border-amber-800/40 text-amber-700 dark:text-amber-300 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer transition active:scale-95 flex flex-col items-center gap-1 shadow-2xs"
+            >
+              <span className="text-base">🌴</span>
+              <span>Franchise</span>
+            </button>
+
+            <button 
+              type="button"
+              onClick={() => setCurrentPage('admin')}
+              className="p-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 border border-rose-200/70 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer transition active:scale-95 flex flex-col items-center gap-1 shadow-2xs"
+            >
+              <span className="text-base">📊</span>
+              <span>Micro Admin</span>
+            </button>
+          </div>
+        </div>
         
         {!isSuperAdminAuthenticated ? (
           /* Authentication Screen */

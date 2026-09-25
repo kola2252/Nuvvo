@@ -21,35 +21,37 @@ View your app in AI Studio: https://ai.studio/apps/507af0d3-8bec-40f4-bc05-8f664
 
 ## Android App & APK Generation
 
-Nuvvo is configured as a native-compliant Progressive Web App with Web App Manifest, 512px maskable icons, and service worker offline caching. You have three ways to run Nuvvo on Android:
+Nuvvo is fully configured as both a native Android Gradle project (via Capacitor) and a compliant Progressive Web App with 512px maskable icons and service worker caching. You have 4 ways to get the Android APK:
 
-### Option 1: Instant Native WebAPK (Direct on Android Phone)
-1. Open Nuvvo in **Google Chrome** or **Samsung Internet** on your Android device.
-2. Tap the in-app **"Install Nuvvo on Android"** banner or tap browser menu (⋮) -> **"Install app"** / **"Add to Home Screen"**.
-3. Android natively packages and signs the app as a **WebAPK** with full OS integration, app launcher icon, standalone window, and offline support.
+### Option 1: Automated GitHub Actions APK Download (Recommended, 0 Setup)
+The repository is equipped with `.github/workflows/build-apk.yml`.
+1. Go to your repository Actions: [https://github.com/kola2252/Nuvvo/actions](https://github.com/kola2252/Nuvvo/actions)
+2. Click **"Build Android APK"** on the left menu.
+3. Click **"Run workflow"**.
+4. Once completed, click the run and download the **`Nuvvo-Android-Debug-APK`** artifact zip containing the installable `.apk`!
 
 ### Option 2: 1-Click APK Download via PWABuilder
 1. Go to [PWABuilder](https://www.pwabuilder.com/) (Google & Microsoft PWA packaging service).
-2. Enter your live deployment URL (e.g. `https://ais-pre-7hutzjogxdbtzmwgwpacnm-343969814096.asia-southeast1.run.app`).
+2. Enter your live deployment URL: `https://ais-pre-7hutzjogxdbtzmwgwpacnm-343969814096.asia-southeast1.run.app`
 3. Click **"Package for Stores"** -> Select **"Android"**.
 4. Download the signed **`.apk`** or **`.aab`** file for direct side-loading or Google Play Store release.
 
-### Option 3: Compile Raw APK with Capacitor & Android Studio
+### Option 3: Instant Native WebAPK (Direct on Android Phone)
+1. Open Nuvvo in **Google Chrome** or **Samsung Internet** on your Android mobile device.
+2. Tap the in-app **"Install Nuvvo on Android"** banner or browser menu (⋮) -> **"Install app"** / **"Add to Home Screen"**.
+3. Android natively compiles and signs a **WebAPK** onto your device with app drawer icon, full-screen standalone window, and offline support.
+
+### Option 4: Compile APK Locally with Android Studio & Capacitor
 ```bash
-# 1. Install Capacitor packages
-npm install -D @capacitor/core @capacitor/cli @capacitor/android
+# Build web assets and sync with the Android Gradle project
+npm run cap:build
 
-# 2. Initialize Capacitor
-npx cap init Nuvvo com.nuvvo.app --web-dir dist
+# Open project directly in Android Studio
+npm run cap:open
 
-# 3. Build project & add Android platform
-npm run build
-npx cap add android
-npx cap sync android
-
-# 4. Open in Android Studio & export APK
-npx cap open android
-# In Android Studio: Build -> Build Bundle(s) / APK(s) -> Build APK(s)
+# Inside Android Studio:
+# Click Build -> Build Bundle(s) / APK(s) -> Build APK(s)
+# The output APK will be at: android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ## Run Locally
