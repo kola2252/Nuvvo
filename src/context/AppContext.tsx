@@ -2162,7 +2162,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const finalAmountAfterPoints = Math.max(0, subtotalAfterCoupon - pointsDiscount);
 
     const deliveryFee = 39;
-    const packagingFee = 15;
+    const packagingFee = 0; // Packaging charges removed
     const tax = Math.round(subtotal * 0.05); // 5% GST
     const finalAmount = finalAmountAfterPoints + deliveryFee + packagingFee + tax + deliveryPartnerTip;
 

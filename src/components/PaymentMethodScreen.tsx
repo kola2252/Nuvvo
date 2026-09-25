@@ -518,8 +518,8 @@ export default function PaymentMethodScreen({
                   <span>{deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Packaging & Taxes:</span>
-                  <span>₹{packagingFee + tax}</span>
+                  <span>Taxes (5% GST):</span>
+                  <span>₹{tax}</span>
                 </div>
                 {tip > 0 && (
                   <div className="flex justify-between text-amber-600 dark:text-amber-400">

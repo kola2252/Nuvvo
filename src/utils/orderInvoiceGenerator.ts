@@ -200,7 +200,7 @@ export function downloadOrderInvoice(order: Order) {
 
   breakdownY += 5;
   doc.text('Packaging Charge:', breakdownX, breakdownY);
-  doc.text(`₹${order.packagingFee || 10}`, breakdownX + 50, breakdownY);
+  doc.text(order.packagingFee ? `₹${order.packagingFee}` : 'FREE', breakdownX + 50, breakdownY);
 
   breakdownY += 5;
   doc.text('Delivery Fee:', breakdownX, breakdownY);

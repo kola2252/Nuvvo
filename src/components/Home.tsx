@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { motion } from 'motion/react';
 import { 
   MapPin, Search, Tag, Star, Clock, Filter, Sparkles, ChevronRight, ChevronLeft,
   Heart, Plus, Minus, Check, Moon, Sun, ShieldCheck, HeartCrack, Compass,
-  Bell, BellOff, Trash2, ThumbsUp, X, Mic, MicOff
+  Bell, BellOff, Trash2, ThumbsUp, X, Mic, MicOff, History, Smartphone
 } from 'lucide-react';
 import { CATEGORIES, CATEGORY_DETAILS } from '../data/catalog';
 import { FoodItem, VegIndicator } from '../types';
@@ -18,6 +18,8 @@ import AddressSelectorModal from './AddressSelectorModal';
 import { useBannerActions } from './BannerSlider';
 import PromotionalCarousel from './PromotionalCarousel';
 import { LazyImage } from './LazyImage';
+import PWAInstallBanner from './PWAInstallBanner';
+import AndroidInstallModal from './AndroidInstallModal';
 
 export default function Home() {
   const { 
@@ -45,6 +47,82 @@ export default function Home() {
   const [selectedRestaurant, setSelectedRestaurant] = useState<any>(null);
   const [modalTab, setModalTab] = useState<'overview' | 'reviews'>('overview');
   const [reviewStarFilter, setReviewStarFilter] = useState<number | 'all'>('all');
+  const [showAndroidModal, setShowAndroidModal] = useState(false);
+
+  // Recent Searches state: stores the last 5 search queries made by the user
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('nuvvo_recent_searches');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.slice(0, 5);
+        }
+      }
+    } catch {}
+    return ['Biryani', 'Filter Coffee', 'Dosa', 'Butter Chicken', 'Burger'];
+  });
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  const saveRecentSearch = (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed || trimmed.length < 2) return;
+    setRecentSearches(prev => {
+      const filtered = prev.filter(item => item.toLowerCase() !== trimmed.toLowerCase());
+      const updated = [trimmed, ...filtered].slice(0, 5);
+      try {
+        localStorage.setItem('nuvvo_recent_searches', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const removeRecentSearch = (itemToRemove: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setRecentSearches(prev => {
+      const updated = prev.filter(item => item !== itemToRemove);
+      try {
+        localStorage.setItem('nuvvo_recent_searches', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const clearAllRecentSearches = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setRecentSearches([]);
+    try {
+      localStorage.removeItem('nuvvo_recent_searches');
+    } catch {}
+  };
+
+  const handleSelectRecentSearch = (query: string) => {
+    setLocalSearch(query);
+    setSelectedCategory(null);
+    saveRecentSearch(query);
+    setIsSearchFocused(false);
+  };
+
+  // Close search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Debounced auto-save of typed search queries
+  useEffect(() => {
+    if (!localSearch || localSearch.trim().length < 3) return;
+    const timer = setTimeout(() => {
+      saveRecentSearch(localSearch);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [localSearch]);
   
   // Dynamic Meal Tag Categories
   const [selectedMealTag, setSelectedMealTag] = useState<string>('All');
@@ -224,6 +302,7 @@ export default function Home() {
         const cleaned = resultTranscript.replace(/[.*+?^${}()|[\]\\]/g, '').trim();
         setLocalSearch(cleaned);
         setSelectedCategory(null);
+        saveRecentSearch(cleaned);
         setVoiceToast(`🔍 Voice Searched for: "${cleaned}"`);
         setTimeout(() => setVoiceToast(null), 3500);
       }
@@ -1241,6 +1320,15 @@ export default function Home() {
           </button>
  
           <button 
+            onClick={() => setShowAndroidModal(true)}
+            aria-label="Android App & APK"
+            title="Install Android App / Generate APK"
+            className="p-2.5 bg-slate-150 dark:bg-zinc-800 hover:bg-orange-500/10 hover:text-orange-500 rounded-full text-zinc-600 dark:text-zinc-300 cursor-pointer active:scale-95 transition-colors"
+          >
+            <Smartphone className="w-4.5 h-4.5" />
+          </button>
+
+          <button 
             onClick={toggleDarkMode}
             aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
             className="p-2.5 bg-slate-150 dark:bg-zinc-800 hover:bg-slate-230/80 rounded-full text-zinc-600 dark:text-amber-400 cursor-pointer active:scale-95"
@@ -1441,14 +1529,24 @@ export default function Home() {
 
       <div className="p-4 space-y-6 max-w-7xl mx-auto">
         
-        {/* Swiggy-like Search-as-you-type bar with active presets */}
-        <div className="relative">
+        {/* Android PWA Install Banner */}
+        <PWAInstallBanner />
+        
+        {/* Swiggy-like Search-as-you-type bar with active presets & Recent Searches */}
+        <div className="relative" ref={searchContainerRef}>
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5 animate-pulse" />
           <input 
             type="text"
             placeholder="Search approximately 200 dishes, cuisines, categories..."
             value={localSearch}
             aria-label="Search approximately 200 dishes, cuisines, and categories"
+            onFocus={() => setIsSearchFocused(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                saveRecentSearch(localSearch);
+                setIsSearchFocused(false);
+              }
+            }}
             onChange={e => {
               const val = e.target.value;
               setLocalSearch(val);
@@ -1461,7 +1559,9 @@ export default function Home() {
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
             {localSearch && (
               <button 
-                onClick={() => setLocalSearch('')}
+                onClick={() => {
+                  setLocalSearch('');
+                }}
                 aria-label="Clear search description"
                 className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-xs font-black cursor-pointer px-1.5 transition"
               >
@@ -1502,7 +1602,81 @@ export default function Home() {
               <span>{voiceToast}</span>
             </div>
           )}
+
+          {/* Interactive Recent Searches Dropdown Menu (last 5 queries) */}
+          {isSearchFocused && recentSearches.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-3.5 z-40 animate-fadeIn">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-zinc-800">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200">
+                  <History className="w-3.5 h-3.5 text-orange-500" />
+                  <span>Recent Searches</span>
+                </div>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={clearAllRecentSearches}
+                  className="text-[11px] font-semibold text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
+                >
+                  Clear all
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                {recentSearches.map((query) => (
+                  <div
+                    key={query}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleSelectRecentSearch(query)}
+                    className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-orange-500/10 cursor-pointer group transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 text-xs text-zinc-700 dark:text-zinc-200">
+                      <Clock className="w-3.5 h-3.5 text-zinc-400 group-hover:text-orange-500 transition-colors" />
+                      <span className="font-medium group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                        {query}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={(e) => removeRecentSearch(query, e)}
+                      title={`Remove "${query}"`}
+                      aria-label={`Remove recent search query ${query}`}
+                      className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 transition cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Quick Recent Searches Chips Row to enhance mobile/desktop navigation speed */}
+        {!localSearch && recentSearches.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 -mt-2">
+            <span className="flex items-center gap-1 text-[11px] font-bold text-zinc-400 dark:text-zinc-500 shrink-0 mr-0.5">
+              <History className="w-3 h-3 text-orange-500" /> Recent:
+            </span>
+            {recentSearches.map((query) => (
+              <div
+                key={query}
+                onClick={() => handleSelectRecentSearch(query)}
+                className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-orange-100 dark:hover:bg-orange-950/40 text-zinc-650 dark:text-zinc-300 hover:text-orange-600 dark:hover:text-orange-400 border border-slate-200/60 dark:border-zinc-800 transition-all shrink-0 cursor-pointer shadow-2xs group"
+              >
+                <span className="font-medium">{query}</span>
+                <button
+                  type="button"
+                  onClick={(e) => removeRecentSearch(query, e)}
+                  title="Remove query"
+                  className="hover:text-red-500 text-zinc-400 p-0.5 rounded cursor-pointer"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Dynamic Meal Tag Category Navigation Bar */}
         <div className="p-3.5 rounded-3xl bg-zinc-50 dark:bg-zinc-950/40 border border-slate-150 dark:border-zinc-900/60 shadow-sm">
@@ -2223,6 +2397,12 @@ export default function Home() {
       <AddressSelectorModal 
         isOpen={showAddressModal} 
         onClose={() => setShowAddressModal(false)} 
+      />
+
+      {/* Android App & APK Installation Center Modal */}
+      <AndroidInstallModal 
+        isOpen={showAndroidModal}
+        onClose={() => setShowAndroidModal(false)}
       />
 
     </div>

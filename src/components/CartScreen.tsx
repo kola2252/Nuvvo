@@ -184,7 +184,7 @@ export default function CartScreen() {
   }
 
   const deliveryFee = subtotal > 400 ? 0 : 39; // Free delivery threshold
-  const packagingFee = subtotal > 0 ? 15 : 0;
+  const packagingFee = 0; // Packing charges removed (100% Free Packaging)
   const tax = Math.round(subtotal * 0.05); // 5% GST on hotel foods
   const finalAmount = Math.max(0, subtotal - discount - pointsDiscount + deliveryFee + packagingFee + tax + deliveryPartnerTip);
 
@@ -804,8 +804,8 @@ export default function CartScreen() {
           )}
 
           <div className="flex justify-between text-xs text-zinc-650 dark:text-zinc-400">
-            <span>Local Packaging charges</span>
-            <span className="font-mono">₹{packagingFee}</span>
+            <span>Packaging Charges</span>
+            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase text-[11px]">FREE</span>
           </div>
 
           <div className="flex justify-between text-xs text-zinc-650 dark:text-zinc-400">

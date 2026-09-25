@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="nuvvoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6B35" />
+      <stop offset="50%" stop-color="#F2542D" />
+      <stop offset="100%" stop-color="#D72638" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#nuvvoGrad)" />
+  <!-- Cloche / Gourmet Food Cover -->
+  <g filter="url(#shadow)" fill="#FFFFFF">
+    <path d="M256 120 c-11 0 -20 9 -20 20 c0 6 3 11 7 15 c-68 11 -119 68 -119 137 l264 0 c0 -69 -51 -126 -119 -137 c4 -4 7 -9 7 -15 c0 -11 -9 -20 -20 -20 z" />
+    <!-- Serving Platter -->
+    <rect x="100" y="300" width="312" height="24" rx="12" fill="#FFFFFF" />
+    <!-- Stylized 'N' Monogram inside dish -->
+    <path d="M190 350 L190 410 L226 410 L286 350 L322 350 L322 410" stroke="#FFFFFF" stroke-width="0" fill="none"/>
+    <!-- Modern N badge -->
+    <text x="256" y="405" font-family="system-ui, -apple-system, sans-serif" font-size="76" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">NUVVO</text>
+  </g>
+</svg>
