@@ -1,101 +1,92 @@
 import fs from 'fs';
 import path from 'path';
-import { PNG } from 'pngjs';
+import sharp from 'sharp';
 
 const resDir = path.resolve('./android/app/src/main/res');
+const publicDir = path.resolve('./public');
+const logoPath = path.join(publicDir, 'nuvvo-logo.png');
 
-function generateIcon(width, height) {
-  const png = new PNG({ width, height });
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const scale = width / 512;
-
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = (width * y + x) << 2;
-      
-      const gradT = (x / width + y / height) / 2;
-      let r = Math.round(255 * (1 - gradT) + 215 * gradT);
-      let g = Math.round(107 * (1 - gradT) + 38 * gradT);
-      let b = Math.round(53 * (1 - gradT) + 56 * gradT);
-      let a = 255;
-
-      const cornerRadius = width * 0.22;
-      const dx = Math.max(0, Math.abs(x - centerX) - (centerX - cornerRadius));
-      const dy = Math.max(0, Math.abs(y - centerY) - (centerY - cornerRadius));
-      const distToCorner = Math.sqrt(dx * dx + dy * dy);
-      if (distToCorner > cornerRadius) {
-        a = 0;
-      } else if (distToCorner > cornerRadius - 1.5) {
-        a = Math.round(255 * (1 - (distToCorner - (cornerRadius - 1.5)) / 1.5));
-      }
-
-      if (a > 0) {
-        const relX = (x - centerX) / (scale * 0.85);
-        const relY = (y - (centerY - 20 * scale)) / (scale * 0.85);
-
-        let isIconPixel = false;
-        const knobDist = Math.sqrt(relX * relX + (relY + 80) * (relY + 80));
-        if (knobDist <= 16) isIconPixel = true;
-
-        if (relY >= -70 && relY <= 30) {
-          const domeRadius = 110;
-          const domeYOffset = 30;
-          const distSq = relX * relX + (relY - domeYOffset) * (relY - domeYOffset);
-          if (distSq <= domeRadius * domeRadius && relY <= 30) isIconPixel = true;
-        }
-
-        if (relX >= -120 && relX <= 120 && relY >= 35 && relY <= 52) isIconPixel = true;
-
-        if (relY >= -115 && relY <= -90 && Math.abs(relX) <= 60) {
-          const wave = Math.sin(relY * 0.25) * 8;
-          if (Math.abs(relX - wave) <= 4 || Math.abs(relX - 35 - wave) <= 3.5 || Math.abs(relX + 35 - wave) <= 3.5) {
-            isIconPixel = true;
-          }
-        }
-
-        if (relY >= 68 && relY <= 118) {
-          if (relX >= -35 && relX <= -20) isIconPixel = true;
-          if (relX >= 20 && relX <= 35) isIconPixel = true;
-          const diagProgress = (relY - 68) / 50;
-          const diagX = -25 + diagProgress * 50;
-          if (Math.abs(relX - diagX) <= 10) isIconPixel = true;
-        }
-
-        if (isIconPixel) {
-          r = 255;
-          g = 255;
-          b = 255;
-        }
-      }
-
-      png.data[idx] = r;
-      png.data[idx + 1] = g;
-      png.data[idx + 2] = b;
-      png.data[idx + 3] = a;
-    }
-  }
-
-  return PNG.sync.write(png);
+if (!fs.existsSync(logoPath)) {
+  console.error(`Error: Source logo not found at ${logoPath}`);
+  process.exit(1);
 }
 
-const sizes = [
-  { folder: 'mipmap-mdpi', size: 48 },
-  { folder: 'mipmap-hdpi', size: 72 },
-  { folder: 'mipmap-xhdpi', size: 96 },
-  { folder: 'mipmap-xxhdpi', size: 144 },
-  { folder: 'mipmap-xxxhdpi', size: 192 },
+// Android launcher density specs
+// size: legacy icon size (48dp)
+// fgSize: adaptive foreground size (108dp)
+const densities = [
+  { folder: 'mipmap-mdpi', size: 48, fgSize: 108 },
+  { folder: 'mipmap-hdpi', size: 72, fgSize: 162 },
+  { folder: 'mipmap-xhdpi', size: 96, fgSize: 216 },
+  { folder: 'mipmap-xxhdpi', size: 144, fgSize: 324 },
+  { folder: 'mipmap-xxxhdpi', size: 192, fgSize: 432 },
 ];
 
-for (const { folder, size } of sizes) {
-  const dir = path.join(resDir, folder);
-  if (fs.existsSync(dir)) {
-    const buffer = generateIcon(size, size);
-    fs.writeFileSync(path.join(dir, 'ic_launcher.png'), buffer);
-    fs.writeFileSync(path.join(dir, 'ic_launcher_round.png'), buffer);
-    fs.writeFileSync(path.join(dir, 'ic_launcher_foreground.png'), buffer);
-    console.log(`Synced ${folder} (${size}x${size})`);
-  }
+const darkBg = { r: 11, g: 11, b: 11, alpha: 1 };
+const transparentBg = { r: 0, g: 0, b: 0, alpha: 0 };
+
+// Create SVG circular mask for round launcher icons
+function createCircleMask(size) {
+  const r = size / 2;
+  return Buffer.from(
+    `<svg width="${size}" height="${size}"><circle cx="${r}" cy="${r}" r="${r}" fill="#fff" /></svg>`
+  );
 }
 
-console.log('Finished syncing Android native launcher icons!');
+async function syncAndroidIcons() {
+  console.log(`Syncing Android launcher icons from: ${logoPath}`);
+
+  for (const { folder, size, fgSize } of densities) {
+    const targetDir = path.join(resDir, folder);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    // 1. Standard legacy launcher icon: ic_launcher.png (size x size)
+    await sharp(logoPath)
+      .resize(size, size, { fit: 'contain', background: darkBg })
+      .png({ quality: 100 })
+      .toFile(path.join(targetDir, 'ic_launcher.png'));
+
+    // 2. Round legacy launcher icon: ic_launcher_round.png (size x size, circular mask)
+    const baseRound = await sharp(logoPath)
+      .resize(size, size, { fit: 'contain', background: darkBg })
+      .toBuffer();
+
+    await sharp(baseRound)
+      .composite([{ input: createCircleMask(size), blend: 'dest-in' }])
+      .png({ quality: 100 })
+      .toFile(path.join(targetDir, 'ic_launcher_round.png'));
+
+    // 3. Adaptive launcher foreground: ic_launcher_foreground.png (fgSize x fgSize)
+    // Android Adaptive Icon spec: 108dp canvas with safe zone in the center 72dp (~67%).
+    // We scale the Nuvvo logo to ~68% of fgSize and place it centered on a transparent canvas.
+    const logoContentSize = Math.round(fgSize * 0.68);
+    const offset = Math.round((fgSize - logoContentSize) / 2);
+
+    const fgLogo = await sharp(logoPath)
+      .resize(logoContentSize, logoContentSize, { fit: 'contain', background: transparentBg })
+      .toBuffer();
+
+    await sharp({
+      create: {
+        width: fgSize,
+        height: fgSize,
+        channels: 4,
+        background: transparentBg,
+      },
+    })
+      .composite([{ input: fgLogo, top: offset, left: offset }])
+      .png({ quality: 100 })
+      .toFile(path.join(targetDir, 'ic_launcher_foreground.png'));
+
+    console.log(`✔ Synced ${folder}: ic_launcher (${size}x${size}), ic_launcher_round (${size}x${size}), ic_launcher_foreground (${fgSize}x${fgSize})`);
+  }
+
+  console.log('Finished syncing all Android launcher icon assets successfully!');
+}
+
+syncAndroidIcons().catch((err) => {
+  console.error('Failed to sync Android icons:', err);
+  process.exit(1);
+});

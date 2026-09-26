@@ -210,9 +210,14 @@ export default function DesktopSupportWidgets() {
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-700 to-indigo-800 dark:from-purple-900 dark:to-zinc-900 p-4 text-white flex items-center justify-between border-b border-purple-500/10">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-white/10 backdrop-blur-md rounded-2xl relative">
-                  <Bot className="w-5 h-5 text-purple-200" />
-                  <span className="absolute bottom-0.5 right-0.5 w-2 h-2 bg-emerald-400 rounded-full border border-purple-850" />
+                <div className="w-9 h-9 rounded-full relative shrink-0 bg-black/40 p-0.5">
+                  <img 
+                    src="/nuvvo-logo.png" 
+                    alt="Nuvvo Logo" 
+                    className="w-full h-full object-contain rounded-full border border-amber-400/40 shadow-sm" 
+                    referrerPolicy="no-referrer" 
+                  />
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-purple-900" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">

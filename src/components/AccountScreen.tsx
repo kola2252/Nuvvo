@@ -3833,6 +3833,27 @@ Thank you for dining with Nuvvo Gourmet!`;
 
         </div>
 
+        {/* NUVVO Brand Footer */}
+        <div className="pt-6 pb-8 text-center flex flex-col items-center justify-center space-y-2 select-none opacity-80 hover:opacity-100 transition-opacity">
+          <img 
+            src="/nuvvo-logo.png" 
+            alt="Nuvvo Logo" 
+            className="w-14 h-14 rounded-full object-contain shadow-md border border-amber-500/30"
+            referrerPolicy="no-referrer"
+          />
+          <div className="flex flex-col items-center">
+            <span className="font-black text-sm tracking-wider uppercase text-zinc-800 dark:text-zinc-200">
+              Nuvvo
+            </span>
+            <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest font-mono mt-0.5">
+              Ruchi Nee Istam • Delivery Mem Istam
+            </span>
+            <span className="text-[8.5px] font-mono text-zinc-400 dark:text-zinc-500 mt-1">
+              Version 1.0.0 • Hyperlocal Chirala Network
+            </span>
+          </div>
+        </div>
+
       </div>
 
       {/* DEVICE CAMERA PHOTO CAPTURE MODAL OVERLAY */}

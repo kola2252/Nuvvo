@@ -1219,8 +1219,36 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 pb-32 transition-colors duration-300">
       
       {/* Dynamic Header */}
-      <header className="sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur shadow-sm z-40 py-3 px-4 flex items-center justify-between border-b border-slate-100 dark:border-zinc-800">
-        <div className="flex items-center gap-1.5 mr-1 max-w-[82%]">
+      <header className="sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur shadow-sm z-40 py-2.5 px-3 md:px-6 flex items-center justify-between border-b border-slate-100 dark:border-zinc-800">
+        <div className="flex items-center gap-2 md:gap-3.5 mr-1 max-w-[85%]">
+          {/* Desktop & Mobile Brand Logo */}
+          <button
+            onClick={() => {
+              setSelectedCategory(null);
+              setLocalSearch('');
+              setSelectedMealTag('All');
+              setCurrentPage('home');
+            }}
+            className="flex items-center gap-2 cursor-pointer shrink-0 hover:opacity-90 active:scale-95 transition-all text-left"
+            title="Nuvvo Home"
+            aria-label="Nuvvo Home"
+          >
+            <img
+              src="/nuvvo-logo.png"
+              alt="Nuvvo Logo"
+              className="w-8 h-8 md:w-10 md:h-10 rounded-full object-contain shadow-sm border border-amber-500/30 shrink-0"
+              referrerPolicy="no-referrer"
+            />
+            <div className="hidden sm:flex flex-col">
+              <span className="font-black text-sm md:text-base tracking-tight text-zinc-900 dark:text-white leading-none">
+                NUVVO
+              </span>
+              <span className="text-[7px] md:text-[8px] font-bold text-amber-600 dark:text-amber-400 tracking-wider uppercase font-mono mt-0.5">
+                Ruchi Nee Istam
+              </span>
+            </div>
+          </button>
+
           {/* Universal navigation options */}
           <div className="flex items-center gap-1 shrink-0 mr-1">
             <button
