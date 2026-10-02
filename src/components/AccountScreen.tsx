@@ -19,7 +19,7 @@ import OrderHistory from './OrderHistory';
 
 export default function AccountScreen() {
   const { 
-    user, toggleDarkMode, darkMode, logoutUser, setCurrentPage, 
+    user, toggleDarkMode, darkMode, logoutUser, setCurrentPage, isAdmin, 
     currentAddress, clickToWhatsAppSupport, clickToWhatsAppFoodBooking, logs, changeOrderStatus, addAuditLog,
     registerNewRestaurantRequest, restaurants, toggleRestaurantActiveStatus,
     orders, reorderItems, updateUserAddresses, setCurrentAddress,
@@ -32,6 +32,7 @@ export default function AccountScreen() {
   } = useApp();
 
   const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [profileSavedSuccess, setProfileSavedSuccess] = useState(false);
   const [selectedPreviewThemeId, setSelectedPreviewThemeId] = useState<string>(currentTheme.id);
   const [showThemeAppliedMessage, setShowThemeAppliedMessage] = useState<boolean>(false);
 
@@ -746,48 +747,54 @@ Thank you for dining with Nuvvo Gourmet!`;
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
 
-    if (!profileName.trim()) {
-      alert("Name is required.");
+    const trimmedName = profileName.trim();
+    const trimmedEmail = profileEmail.trim();
+
+    if (!trimmedName) {
+      alert("దయచేసి మీ పేరును నమోదు చేయండి (Please enter your full name).");
       return;
     }
-    if (!profilePhone.trim()) {
-      alert("Phone number is required.");
-      return;
+
+    let updatedAddresses = user?.addresses ? [...user.addresses] : [];
+    if (profileFlatNo.trim() || profileArea.trim()) {
+      const primaryAddr = user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0];
+      if (primaryAddr) {
+        const updatedAddr: Address = {
+          ...primaryAddr,
+          flatNo: profileFlatNo.trim() || primaryAddr.flatNo,
+          area: profileArea.trim() || primaryAddr.area,
+          city: profileCity.trim() || primaryAddr.city
+        };
+        updatedAddresses = updatedAddresses.map(a => a.id === primaryAddr.id ? updatedAddr : a);
+        setCurrentAddress(updatedAddr);
+      } else {
+        const newAddr: Address = {
+          id: `addr_${Date.now()}`,
+          type: 'Home',
+          flatNo: profileFlatNo.trim() || 'N/A',
+          area: profileArea.trim() || 'Chirala Delivery Point',
+          city: profileCity.trim() || 'Chirala',
+          isDefault: true
+        };
+        updatedAddresses = [newAddr];
+        setCurrentAddress(newAddr);
+      }
     }
 
-    // 1. Update name, email, phone (pass avatar and phone number too!)
-    updateUserProfile(profileName, profileEmail, user.avatar, profilePhone);
+    // Single atomic update ensuring name, email and addresses persist together
+    updateUserProfile(
+      trimmedName, 
+      trimmedEmail, 
+      user?.avatar, 
+      profilePhone.trim() || user?.phone, 
+      updatedAddresses.length ? updatedAddresses : undefined
+    );
 
-    // 2. Update address (flatNo, area, city)
-    const primaryAddr = user.addresses?.find(a => a.isDefault) || user.addresses?.[0];
-    let updatedAddresses = [...(user.addresses || [])];
-
-    if (primaryAddr) {
-      const updatedAddr = {
-        ...primaryAddr,
-        flatNo: profileFlatNo,
-        area: profileArea,
-        city: profileCity
-      };
-      updatedAddresses = updatedAddresses.map(a => a.id === primaryAddr.id ? updatedAddr : a);
-      setCurrentAddress(updatedAddr);
-    } else {
-      const newAddr: Address = {
-        id: `addr_${Date.now()}`,
-        type: 'Home',
-        flatNo: profileFlatNo || 'N/A',
-        area: profileArea || 'Chirala Delivery Point',
-        city: profileCity || 'Chirala',
-        isDefault: true
-      };
-      updatedAddresses = [newAddr];
-      setCurrentAddress(newAddr);
-    }
-
-    updateUserAddresses(updatedAddresses);
-    alert('🎉 Profile updated successfully! Your updated details are saved.');
+    setProfileSavedSuccess(true);
+    setTimeout(() => {
+      setProfileSavedSuccess(false);
+    }, 4000);
     setIsEditingInfo(false);
   };
 
@@ -1020,191 +1027,311 @@ Thank you for dining with Nuvvo Gourmet!`;
       <div className="p-4 max-w-sm mx-auto space-y-4">
         
         {/* CORE USER BIO PROFILE */}
-        <div className="bg-white dark:bg-zinc-900 border rounded-3xl p-5 shadow-sm space-y-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl" />
-          
-          <div className="flex items-center gap-4">
-            <div className="relative group shrink-0">
-              <div id="user-avatar-badge-container" className="w-16 h-16 rounded-full bg-orange-500 text-white font-black flex items-center justify-center text-xl shadow-lg shadow-orange-500/20 overflow-hidden border border-orange-200 dark:border-zinc-800">
-                {user?.avatar ? (
-                  <img 
-                    id="user-avatar-badge-img"
-                    src={user.avatar} 
-                    alt={`${user.name}'s Profile Avatar`} 
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  user?.name ? user.name.charAt(0).toUpperCase() : <User className="w-6 h-6" />
-                )}
-              </div>
-              
-              <button
-                id="profile-avatar-camera-trigger"
-                onClick={startCamera}
-                type="button"
-                className="absolute -bottom-1 -right-1 p-1.5 bg-orange-500 hover:bg-orange-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white rounded-full border border-white dark:border-zinc-900 shadow-lg cursor-pointer transition transform hover:scale-110 active:scale-95 flex items-center justify-center"
-                title="Update Profile Photo with Camera"
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-black text-zinc-950 dark:text-zinc-50 uppercase tracking-widest flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-orange-500" /> Customer Profile Details (ప్రొఫైల్ వివరాలు)
+            </h3>
+            {!isEditingInfo && (
+              <button 
+                type="button" 
+                onClick={() => setIsEditingInfo(true)}
+                className="text-[10px] font-extrabold text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
-                <Camera className="w-3.5 h-3.5" />
+                <Edit className="w-2.5 h-2.5" /> Edit Details
               </button>
-            </div>
-            
-            <div>
-              <h3 className="font-extrabold text-zinc-900 dark:text-zinc-50 leading-tight">
-                {user?.name || 'Incomplete Profile'}
-              </h3>
-              <p className="text-[10px] text-zinc-400 font-mono font-bold mt-1 tracking-tight">MOBILE: +91 {user?.phone || 'Guest Mode'}</p>
-              <div className="mt-1 flex gap-1">
-                {user?.role && (
-                  <span className="text-[9px] bg-orange-500/10 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase">
-                    Role: {user?.role || 'Guest'}
-                  </span>
-                )}
-                {(user?.phone === '9063692135' || user?.phone === '8328355812') && (
-                  <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase animate-pulse">Super Master</span>
-                )}
-              </div>
-            </div>
+            )}
           </div>
 
-          {isEditingInfo ? (
-            <form onSubmit={handleUpdateProfile} className="space-y-3.5 pt-3 border-t dark:border-zinc-800 text-xs">
-              <div>
-                <label className="block text-[9px] uppercase font-black text-zinc-400 dark:text-zinc-550 mb-0.5 tracking-wider">Customer Name</label>
-                <input 
-                  type="text" 
-                  value={profileName} 
-                  onChange={e => setProfileName(e.target.value)} 
-                  required
-                  className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 font-extrabold focus:outline-none focus:border-orange-500"
-                  placeholder="Enter full name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[9px] uppercase font-black text-zinc-400 dark:text-zinc-550 mb-0.5 tracking-wider">Phone Number</label>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold font-mono">+91</span>
-                  <input 
-                    type="tel" 
-                    value={profilePhone} 
-                    onChange={e => setProfilePhone(e.target.value)} 
-                    required
-                    maxLength={10}
-                    className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 pl-11 pr-2.5 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 font-mono font-black focus:outline-none focus:border-orange-500"
-                    placeholder="10-digit mobile number"
-                  />
+          <div className="bg-white dark:bg-zinc-900 border rounded-3xl p-5 shadow-sm space-y-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl" />
+            
+            {/* Success Banner on Profile Save */}
+            {profileSavedSuccess && (
+              <motion.div 
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-2xl flex items-center gap-2.5 text-emerald-800 dark:text-emerald-200 text-xs font-black shadow-sm"
+              >
+                <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div>
+                  <p className="leading-tight font-extrabold">✓ Profile Details Saved Successfully!</p>
+                  <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 mt-0.5">
+                    Name: <span className="font-bold underline">{user?.name}</span> • Email: <span className="font-bold underline">{user?.email || 'Saved'}</span>
+                  </p>
                 </div>
-              </div>
+              </motion.div>
+            )}
 
-              <div>
-                <label className="block text-[9px] uppercase font-black text-zinc-400 dark:text-zinc-550 mb-0.5 tracking-wider">Email Address</label>
-                <input 
-                  type="email" 
-                  value={profileEmail} 
-                  onChange={e => setProfileEmail(e.target.value)} 
-                  className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 font-bold focus:outline-none focus:border-orange-500"
-                  placeholder="name@example.com"
-                />
-              </div>
-
-              {/* PRIMARY DELIVERY PIN SUBSECTION */}
-              <div className="pt-2.5 border-t border-dashed border-slate-200 dark:border-zinc-800 space-y-2">
-                <span className="block text-[9.5px] uppercase font-black text-orange-500 tracking-wider">
-                  Primary Delivery Location
-                </span>
+            <div className="flex items-center gap-4">
+              <div className="relative group shrink-0">
+                <div id="user-avatar-badge-container" className="w-16 h-16 rounded-full bg-orange-500 text-white font-black flex items-center justify-center text-xl shadow-lg shadow-orange-500/20 overflow-hidden border border-orange-200 dark:border-zinc-800">
+                  {user?.avatar ? (
+                    <img 
+                      id="user-avatar-badge-img"
+                      src={user.avatar} 
+                      alt={`${user.name}'s Profile Avatar`} 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    user?.name ? user.name.charAt(0).toUpperCase() : <User className="w-6 h-6" />
+                  )}
+                </div>
                 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="col-span-2">
-                    <label className="block text-[8.5px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-0.5">Flat / House No / Floor</label>
-                    <input 
-                      type="text" 
-                      value={profileFlatNo} 
-                      onChange={e => setProfileFlatNo(e.target.value)} 
-                      required
-                      className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2 rounded-lg border border-slate-250/60 dark:border-zinc-700 font-bold"
-                      placeholder="e.g. Flat 301, Tulip Block"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[8.5px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-0.5">Area / Street Name</label>
-                    <input 
-                      type="text" 
-                      value={profileArea} 
-                      onChange={e => setProfileArea(e.target.value)} 
-                      required
-                      className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2 rounded-lg border border-slate-250/60 dark:border-zinc-700 font-bold"
-                      placeholder="e.g. Kothapet Road"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[8.5px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-0.5">City</label>
-                    <input 
-                      type="text" 
-                      value={profileCity} 
-                      onChange={e => setProfileCity(e.target.value)} 
-                      required
-                      className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2 rounded-lg border border-slate-250/60 dark:border-zinc-700 font-bold"
-                      placeholder="e.g. Chirala"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2 justify-end pt-2 border-t dark:border-zinc-800">
-                <button 
-                  type="button" 
-                  onClick={() => setIsEditingInfo(false)}
-                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-650 dark:text-zinc-300 rounded-xl font-black uppercase text-[10px] tracking-wider transition cursor-pointer"
+                <button
+                  id="profile-avatar-camera-trigger"
+                  onClick={startCamera}
+                  type="button"
+                  className="absolute -bottom-1 -right-1 p-1.5 bg-orange-500 hover:bg-orange-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white rounded-full border border-white dark:border-zinc-900 shadow-lg cursor-pointer transition transform hover:scale-110 active:scale-95 flex items-center justify-center"
+                  title="Update Profile Photo with Camera"
                 >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  className={`px-4 py-2 ${currentTheme.bgClass} hover:opacity-90 text-white rounded-xl font-black uppercase text-[10px] tracking-wider transition cursor-pointer shadow-sm`}
-                >
-                  Save Profile
+                  <Camera className="w-3.5 h-3.5" />
                 </button>
               </div>
-            </form>
-          ) : (
-            <div className="pt-3 border-t dark:border-zinc-800 text-xs space-y-2">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-400 font-semibold">Email:</span>
-                  <strong className="text-zinc-800 dark:text-zinc-200 font-bold">{user?.email || 'Not configured'}</strong>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-1">
+                  <h3 className="font-extrabold text-zinc-900 dark:text-zinc-50 leading-tight text-base truncate">
+                    {user?.name || 'Incomplete Profile'}
+                  </h3>
+                  {!isEditingInfo && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingInfo(true)}
+                      className="px-2.5 py-1 text-[10px] font-black text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/50 rounded-xl flex items-center gap-1 transition cursor-pointer active:scale-95 shrink-0 border border-orange-200/50 dark:border-orange-900/40"
+                      title="Change Name or Email"
+                    >
+                      <Edit className="w-3 h-3" /> Edit
+                    </button>
+                  )}
                 </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-400 font-semibold">Phone:</span>
-                  <strong className="text-zinc-800 dark:text-zinc-200 font-mono font-bold">+91 {user?.phone || 'Guest Mode'}</strong>
+                <p className="text-[10px] text-zinc-400 font-mono font-bold mt-1 tracking-tight">MOBILE: +91 {user?.phone || 'Guest Mode'}</p>
+                <div className="mt-1 flex gap-1 items-center flex-wrap">
+                  {user?.role && (
+                    <span className="text-[9px] bg-orange-500/10 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase">
+                      Role: {user?.role || 'Guest'}
+                    </span>
+                  )}
+                  {user?.phone === '9063692135' && (
+                    <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase animate-pulse">Super Master</span>
+                  )}
                 </div>
-                <div className="flex items-start justify-between text-[11px] gap-4">
-                  <span className="text-zinc-400 font-semibold shrink-0">Delivery Address:</span>
-                  <strong className="text-zinc-850 dark:text-zinc-250 text-right font-medium leading-tight">
-                    {user?.addresses && user.addresses.length > 0 ? (
-                      (() => {
-                        const defaultAddr = user.addresses.find(a => a.isDefault) || user.addresses[0];
-                        return `${defaultAddr.flatNo}, ${defaultAddr.area}, ${defaultAddr.city}`;
-                      })()
-                    ) : (
-                      'No addresses configured yet'
-                    )}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center pt-2.5 border-t border-dashed dark:border-zinc-800">
-                <p className="text-[10px] text-zinc-400 dark:text-zinc-550 font-mono italic">First Joined: June 2026</p>
-                <button 
-                  onClick={() => setIsEditingInfo(true)}
-                  className={`${currentTheme.textClass} font-extrabold text-[11px] focus:outline-none hover:underline cursor-pointer flex items-center gap-1`}
-                >
-                  <Edit className="w-3 h-3" /> Edit Profile Details
-                </button>
               </div>
             </div>
-          )}
+
+            {isEditingInfo ? (
+              <form onSubmit={handleUpdateProfile} className="space-y-4 pt-3 border-t dark:border-zinc-800 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-tight flex items-center gap-1.5">
+                    <Edit className="w-3.5 h-3.5 text-orange-500" /> Edit Profile Details
+                  </span>
+                  <span className="text-[9px] text-zinc-400 font-medium">Update Name & Email</span>
+                </div>
+
+                {/* NAME FIELD */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] uppercase font-black text-zinc-600 dark:text-zinc-300 tracking-wider flex items-center gap-1">
+                      <User className="w-3 h-3 text-orange-500" /> Customer Name (కస్టమర్ పేరు)
+                    </label>
+                    <span className="text-[9px] text-orange-500 font-bold">Change Name</span>
+                  </div>
+                  <input 
+                    type="text" 
+                    value={profileName} 
+                    onChange={e => setProfileName(e.target.value)} 
+                    required
+                    className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 font-extrabold focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-sm"
+                    placeholder="Enter full name"
+                  />
+                  <p className="text-[9.5px] text-zinc-400 dark:text-zinc-500 mt-1">This name will appear on all delivery labels and restaurant orders.</p>
+                </div>
+
+                {/* EMAIL FIELD */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] uppercase font-black text-zinc-600 dark:text-zinc-300 tracking-wider flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-orange-500" /> Customer Email (ఈమెయిల్ అడ్రస్)
+                    </label>
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">Save Email</span>
+                  </div>
+                  <input 
+                    type="email" 
+                    value={profileEmail} 
+                    onChange={e => setProfileEmail(e.target.value)} 
+                    className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 text-sm"
+                    placeholder="name@example.com"
+                  />
+                  <p className="text-[9.5px] text-zinc-400 dark:text-zinc-500 mt-1">Order confirmations, digital food receipts, and invoices are saved to this email.</p>
+                </div>
+
+                {/* PHONE NUMBER (READ-ONLY / LOCKED) */}
+                <div>
+                  <label className="block text-[10px] uppercase font-black text-zinc-400 dark:text-zinc-550 mb-1 tracking-wider">Registered Mobile Number</label>
+                  <div className="relative opacity-80">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold font-mono">+91</span>
+                    <input 
+                      type="tel" 
+                      value={profilePhone} 
+                      readOnly
+                      className="w-full bg-slate-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 pl-11 pr-2.5 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 font-mono font-bold focus:outline-none cursor-not-allowed"
+                      placeholder="10-digit mobile number"
+                    />
+                  </div>
+                  <p className="text-[9px] text-zinc-400 mt-0.5 font-mono">Mobile is verified via OTP security pass.</p>
+                </div>
+
+                {/* PRIMARY DELIVERY PIN SUBSECTION */}
+                <div className="pt-2.5 border-t border-dashed border-slate-200 dark:border-zinc-800 space-y-2">
+                  <span className="block text-[9.5px] uppercase font-black text-orange-500 tracking-wider">
+                    Primary Delivery Location (Optional)
+                  </span>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-2">
+                      <label className="block text-[8.5px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-0.5">Flat / House No / Floor</label>
+                      <input 
+                        type="text" 
+                        value={profileFlatNo} 
+                        onChange={e => setProfileFlatNo(e.target.value)} 
+                        className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2 rounded-lg border border-slate-250/60 dark:border-zinc-700 font-bold"
+                        placeholder="e.g. Flat 301, Tulip Block"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8.5px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-0.5">Area / Street Name</label>
+                      <input 
+                        type="text" 
+                        value={profileArea} 
+                        onChange={e => setProfileArea(e.target.value)} 
+                        className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2 rounded-lg border border-slate-250/60 dark:border-zinc-700 font-bold"
+                        placeholder="e.g. Kothapet Road"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8.5px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-0.5">City</label>
+                      <input 
+                        type="text" 
+                        value={profileCity} 
+                        onChange={e => setProfileCity(e.target.value)} 
+                        className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 p-2 rounded-lg border border-slate-250/60 dark:border-zinc-700 font-bold"
+                        placeholder="e.g. Chirala"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 justify-end pt-2 border-t dark:border-zinc-800">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsEditingInfo(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-650 dark:text-zinc-300 rounded-xl font-black uppercase text-[10px] tracking-wider transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className={`px-5 py-2.5 ${currentTheme.bgClass} hover:opacity-90 text-white rounded-xl font-black uppercase text-[10px] tracking-wider transition cursor-pointer shadow-md flex items-center gap-1.5 active:scale-95`}
+                  >
+                    <Check className="w-3.5 h-3.5" /> Save Details (వివరాలు సేవ్ చేయండి)
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="pt-3 border-t dark:border-zinc-800 text-xs space-y-2.5">
+                <div className="space-y-2">
+                  {/* NAME ROW WITH DIRECT CHANGE BUTTON */}
+                  <div className="flex items-center justify-between text-[11px] p-2.5 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-800/80">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="p-1.5 bg-white dark:bg-zinc-700 rounded-xl text-orange-500 shadow-2xs">
+                        <User className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] uppercase font-bold text-zinc-400 block">Customer Name</span>
+                          <span className="text-[8px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.2 rounded font-bold">✓ Saved</span>
+                        </div>
+                        <strong className="text-zinc-850 dark:text-zinc-150 font-black block truncate text-xs">
+                          {user?.name || 'Incomplete Profile'}
+                        </strong>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingInfo(true)}
+                      className="text-[10px] text-orange-600 dark:text-orange-400 font-extrabold hover:underline cursor-pointer flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2 py-1 rounded-lg shrink-0"
+                    >
+                      <Edit className="w-2.5 h-2.5" /> Change Name
+                    </button>
+                  </div>
+
+                  {/* EMAIL ROW WITH DIRECT EDIT/ADD BUTTON */}
+                  <div className="flex items-center justify-between text-[11px] p-2.5 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-800/80">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="p-1.5 bg-white dark:bg-zinc-700 rounded-xl text-indigo-500 shadow-2xs">
+                        <Mail className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] uppercase font-bold text-zinc-400 block">Customer Email</span>
+                          {user?.email && (
+                            <span className="text-[8px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.2 rounded font-bold">✓ Saved</span>
+                          )}
+                        </div>
+                        <strong className="text-zinc-850 dark:text-zinc-150 font-bold block truncate text-xs">
+                          {user?.email ? (
+                            user.email
+                          ) : (
+                            <span className="text-amber-600 dark:text-amber-400 font-semibold italic">Not saved yet</span>
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingInfo(true)}
+                      className="text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold hover:underline cursor-pointer flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-1 rounded-lg shrink-0"
+                    >
+                      {user?.email ? <><Edit className="w-2.5 h-2.5" /> Change Email</> : <><Plus className="w-2.5 h-2.5" /> Save Email</>}
+                    </button>
+                  </div>
+
+                  {/* PHONE */}
+                  <div className="flex items-center justify-between text-[11px] px-2.5 py-1">
+                    <span className="text-zinc-400 font-semibold">Phone:</span>
+                    <strong className="text-zinc-800 dark:text-zinc-200 font-mono font-bold">+91 {user?.phone || 'Guest Mode'}</strong>
+                  </div>
+
+                  {/* ADDRESS */}
+                  <div className="flex items-start justify-between text-[11px] px-2.5 py-1 gap-4">
+                    <span className="text-zinc-400 font-semibold shrink-0">Delivery Address:</span>
+                    <strong className="text-zinc-850 dark:text-zinc-250 text-right font-medium leading-tight">
+                      {user?.addresses && user.addresses.length > 0 ? (
+                        (() => {
+                          const defaultAddr = user.addresses.find(a => a.isDefault) || user.addresses[0];
+                          return `${defaultAddr.flatNo}, ${defaultAddr.area}, ${defaultAddr.city}`;
+                        })()
+                      ) : (
+                        'No addresses configured yet'
+                      )}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center pt-2.5 border-t border-dashed dark:border-zinc-800">
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-550 font-mono italic">First Joined: June 2026</p>
+                  <button 
+                    onClick={() => setIsEditingInfo(true)}
+                    className={`${currentTheme.textClass} font-extrabold text-[11px] focus:outline-none hover:underline cursor-pointer flex items-center gap-1`}
+                  >
+                    <Edit className="w-3 h-3" /> Edit All Profile Details
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* NUVVO POINTS LOYALTY REWARDS COMPONENT */}
@@ -2410,14 +2537,14 @@ Thank you for dining with Nuvvo Gourmet!`;
           </div>
         </div>
 
-        {/* LOGISTICS BRIDGE HUB FOR MULTI-ROLE TESTING (AMAZING ADDITION!) */}
+        {/* LOGISTICS BRIDGE HUB */}
         <div className="bg-white dark:bg-zinc-900 border rounded-3xl p-5 shadow-sm space-y-3">
           <h4 className="text-xs font-black text-zinc-950 dark:text-zinc-50 tracking-tight uppercase flex items-center gap-1">
-            <Settings className="w-4 h-4 text-orange-500" /> Multi-Role Portal Bridges
+            <Settings className="w-4 h-4 text-orange-500" /> Portal Navigation Bridges
           </h4>
-          <p className="text-[10px] text-zinc-400 leading-snug">Instantly transition your UI view into different sections of the Nuvvo Ecosystem below:</p>
+          <p className="text-[10px] text-zinc-400 leading-snug">Explore partner opportunities and other sections of the Nuvvo Ecosystem below:</p>
           
-          <div className={`${(user?.phone === '9063692135' || user?.phone === '8328355812') ? 'grid-cols-3' : 'grid-cols-2'} grid gap-2 text-center text-xs`}>
+          <div className={`${isAdmin ? 'grid-cols-3' : 'grid-cols-2'} grid gap-2 text-center text-xs`}>
             <button 
               onClick={() => setCurrentPage('partner')}
               className="p-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer"
@@ -2432,12 +2559,14 @@ Thank you for dining with Nuvvo Gourmet!`;
               🌴 Franchise
             </button>
 
-            <button 
-              onClick={() => setCurrentPage('admin')}
-              className="p-3 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer"
-            >
-              📊 Admin {(user?.phone !== '9063692135' && user?.phone !== '8328355812') && ' (View)'}
-            </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setCurrentPage('admin')}
+                className="p-3 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-2xl font-black uppercase tracking-wider text-[9px] cursor-pointer"
+              >
+                📊 Admin
+              </button>
+            )}
           </div>
         </div>
 

@@ -113,6 +113,16 @@ export interface Address {
   deliveryNotes?: string;
 }
 
+export type AppLanguage = 'en' | 'te' | 'hi';
+
+export interface ReferralSettings {
+  referrerBonusPoints: number;
+  refereeBonusPoints: number;
+  pointsToRupeeRatio: number;
+  isReferralProgramActive: boolean;
+  minOrderValueToRedeem?: number;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -125,6 +135,10 @@ export interface User {
   favoriteRestaurants: string[]; // restaurant ids
   role: 'Super Admin' | 'Admin' | 'Delivery Partner' | 'Franchise' | 'Customer';
   isProfileComplete: boolean;
+  preferredLanguage?: AppLanguage;
+  referralCredits?: number;
+  referredBy?: string;
+  referralCode?: string;
   createdAt: string;
 }
 
@@ -168,6 +182,12 @@ export interface Order {
   eta: number; // mins remaining / total duration
   trackingHistory: { status: OrderStatus; time: string }[];
   deliveryPartnerId?: string;
+  deliveryPartnerName?: string;
+  deliveryPartnerPhone?: string;
+  deliveryPartnerAvatar?: string;
+  deliveryPartnerVehicle?: string;
+  deliveryPartnerRating?: number;
+  deliveryPartnerLocation?: { lat: number; lng: number; addressLabel?: string };
   scheduledTime?: string;
   pointsEarned?: number;
   pointsRedeemed?: number;

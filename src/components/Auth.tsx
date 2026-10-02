@@ -6,12 +6,15 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { motion } from 'motion/react';
-import { Phone, Lock, User, Mail, MapPin, Sparkles, Building2 } from 'lucide-react';
+import { Phone, Lock, User, Mail, MapPin, Sparkles, Building2, Globe } from 'lucide-react';
 import { Address } from '../types';
 import NuvvoLogo from './NuvvoLogo';
+import { translations } from '../utils/translations';
 
 export default function Auth() {
-  const { loginWithPhone, verifyOtpAndLogin, completeUserProfile, user, setCurrentPage } = useApp();
+  const { loginWithPhone, verifyOtpAndLogin, completeUserProfile, user, setCurrentPage, language, setLanguage } = useApp();
+
+  const t = translations[language] || translations.en;
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [roleOption, setRoleOption] = useState('Customer');
@@ -27,7 +30,7 @@ export default function Auth() {
   const [flatNo, setFlatNo] = useState('');
   const [area, setArea] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [city, setCity] = useState('Hyderabad');
+  const [city, setCity] = useState('Chirala');
 
   // Timer countdown
   useEffect(() => {
@@ -115,7 +118,7 @@ export default function Auth() {
       gpsCoordinates: { lat: 17.4483 + (Math.random() - 0.5) * 0.01, lng: 78.3741 + (Math.random() - 0.5) * 0.01 }
     };
 
-    completeUserProfile(fullName, emailAddress, homeAddress);
+    completeUserProfile(fullName, emailAddress, homeAddress, language);
     setCurrentPage('home');
   };
 
@@ -133,7 +136,35 @@ export default function Auth() {
         <div className="bg-gradient-to-b from-[#FAF8F5] to-white dark:from-zinc-900 dark:to-zinc-950 p-6 text-center relative border-b dark:border-zinc-800">
           <div className="absolute top-4 right-4 text-zinc-300 dark:text-zinc-700 text-3xl opacity-30 select-none">✨</div>
           <NuvvoLogo size="md" showText={true} animate={false} />
-          <p className="text-[9px] font-bold font-mono tracking-widest text-zinc-400 uppercase mt-2">SECURE GATEWAY ACCESS</p>
+          <p className="text-[9px] font-bold font-mono tracking-widest text-zinc-400 uppercase mt-2">{t.secureGateway}</p>
+        </div>
+
+        {/* Global Language Selector Bar at Registration & Login */}
+        <div className="flex items-center justify-between px-5 py-2.5 bg-slate-50 dark:bg-zinc-850/80 border-b border-slate-100 dark:border-zinc-800">
+          <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300">
+            <Globe className="w-3.5 h-3.5 text-orange-500" />
+            <span className="text-[10px] font-black uppercase tracking-wider font-mono">Language / భాష:</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {[
+              { id: 'en', label: 'English', flag: '🇬🇧' },
+              { id: 'te', label: 'తెలుగు', flag: '🇮🇳' },
+              { id: 'hi', label: 'हिंदी', flag: '🇮🇳' }
+            ].map(l => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => setLanguage(l.id as any)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  language === l.id
+                    ? 'bg-orange-500 text-white shadow-xs'
+                    : 'bg-white dark:bg-zinc-800 text-zinc-650 dark:text-zinc-350 hover:bg-slate-200 dark:hover:bg-zinc-700 border border-slate-200 dark:border-zinc-700'
+                }`}
+              >
+                {l.flag} {l.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="p-6">
@@ -292,18 +323,52 @@ export default function Auth() {
           {step === 'profile' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
               <div className="text-center mb-6">
-                <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Create Demographics Profile</h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">Secure your digital wallet and catalog tracking details for future deliveries.</p>
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{t.createProfile}</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">{t.profileSubtitle}</p>
               </div>
 
               <form onSubmit={handleSaveProfile} className="space-y-4">
+                {/* Language Choice Tile in Profile Registration */}
+                <div className="bg-orange-50/70 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-900/40 p-3 rounded-2xl space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-orange-800 dark:text-orange-300 uppercase tracking-wider flex items-center gap-1">
+                      <Globe className="w-3.5 h-3.5 text-orange-500" /> {t.selectLanguage}
+                    </label>
+                    <span className="text-[9px] bg-orange-200 dark:bg-orange-900/60 text-orange-900 dark:text-orange-200 px-1.5 py-0.2 rounded font-bold">
+                      {language === 'te' ? 'తెలుగు' : language === 'hi' ? 'हिंदी' : 'English'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    {[
+                      { id: 'te', label: 'తెలుగు', sub: 'Telugu', badge: 'ఆంధ్రప్రదేశ్' },
+                      { id: 'en', label: 'English', sub: 'Global', badge: 'Standard' },
+                      { id: 'hi', label: 'हिंदी', sub: 'Hindi', badge: 'भारतीय' }
+                    ].map(l => (
+                      <button
+                        key={l.id}
+                        type="button"
+                        onClick={() => setLanguage(l.id as any)}
+                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                          language === l.id
+                            ? 'bg-white dark:bg-zinc-800 border-orange-500 text-orange-600 dark:text-orange-400 shadow-sm ring-2 ring-orange-500/20 font-black'
+                            : 'bg-white/60 dark:bg-zinc-900/60 border-slate-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-400 font-bold hover:border-slate-300'
+                        }`}
+                      >
+                        <span className="block text-xs font-black">{l.label}</span>
+                        <span className="block text-[8.5px] opacity-75">{l.sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Full Name</label>
+                  <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">{t.fullName}</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
                     <input 
                       type="text"
-                      placeholder="Shreya Iyer"
+                      placeholder={t.fullNamePlaceholder}
                       value={fullName}
                       onChange={e => setFullName(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 pl-11 pr-4 py-3 rounded-xl border border-slate-200 dark:border-zinc-700 focus:outline-none focus:border-orange-500 text-sm font-semibold"
@@ -312,12 +377,12 @@ export default function Auth() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Email Address</label>
+                  <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">{t.emailAddress}</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5" />
                     <input 
                       type="email"
-                      placeholder="example@nuvvo.cloud"
+                      placeholder={t.emailPlaceholder}
                       value={emailAddress}
                       onChange={e => setEmailAddress(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 pl-11 pr-4 py-3 rounded-xl border border-slate-200 dark:border-zinc-700 focus:outline-none focus:border-orange-500 text-sm font-semibold"
@@ -328,12 +393,12 @@ export default function Auth() {
                 {/* Address Group */}
                 <div className="border-t border-slate-100 dark:border-zinc-800 pt-4 mt-2">
                   <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-2 flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-orange-500" /> Primary Delivery Location Setup
+                    <MapPin className="w-4 h-4 text-orange-500" /> {t.primaryDeliverySetup}
                   </p>
                   
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">Flat / Block No.</label>
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">{t.flatNo}</label>
                       <input 
                         type="text" 
                         placeholder="Penthouse 4B" 
@@ -343,10 +408,10 @@ export default function Auth() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">Landmark (Optional)</label>
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">{t.landmark}</label>
                       <input 
                         type="text" 
-                        placeholder="Near Metro gate" 
+                        placeholder="Near Clock Tower" 
                         value={landmark}
                         onChange={e => setLandmark(e.target.value)}
                         className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 focus:outline-none focus:border-orange-500 text-xs font-semibold"
@@ -355,10 +420,10 @@ export default function Auth() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">Area / Street Address</label>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">{t.areaStreet}</label>
                     <input 
                       type="text" 
-                      placeholder="Madhapur Cyber Hills" 
+                      placeholder="Chirala Main Road" 
                       value={area}
                       onChange={e => setArea(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 focus:outline-none focus:border-orange-500 text-xs font-semibold"
@@ -366,7 +431,7 @@ export default function Auth() {
                   </div>
 
                   <div className="mt-2 text-xs">
-                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">Metropolitan Territory</label>
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">{t.city}</label>
                     <div className="relative">
                       <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" />
                       <select 
@@ -374,11 +439,12 @@ export default function Auth() {
                         onChange={e => setCity(e.target.value)}
                         className="w-full bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 pl-10 pr-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 focus:outline-none focus:border-orange-500 font-bold"
                       >
+                        <option value="Chirala">Chirala</option>
+                        <option value="Bapatla">Bapatla</option>
+                        <option value="Ongole">Ongole</option>
+                        <option value="Guntur">Guntur</option>
+                        <option value="Vijayawada">Vijayawada</option>
                         <option value="Hyderabad">Hyderabad</option>
-                        <option value="Bangalore">Bangalore</option>
-                        <option value="Mumbai">Mumbai</option>
-                        <option value="New Delhi">New Delhi</option>
-                        <option value="Chennai">Chennai</option>
                       </select>
                     </div>
                   </div>
@@ -388,7 +454,7 @@ export default function Auth() {
                   type="submit"
                   className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white py-3 rounded-xl font-bold transition-all shadow-lg cursor-pointer active:scale-98 mt-4"
                 >
-                  Create Profile & Play
+                  {t.saveAndStart}
                 </button>
               </form>
             </motion.div>

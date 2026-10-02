@@ -9,7 +9,7 @@ import {
   DeliveryPartnerProfile, FranchiseApplication, Address, Coupon, AuditLog,
   AppNotification, Banner, PointsTransaction, RestaurantReview, ScheduledNotification,
   RiderEarningRecord, RiderPayout, SimulatedEmail, MerchantPayout, AppTheme,
-  DesignatedAdmin, AdminPermissions, PaymentMethodType, VegIndicator
+  DesignatedAdmin, AdminPermissions, PaymentMethodType, VegIndicator, AppLanguage, ReferralSettings
 } from '../types';
 import { FOOD_CATALOG, RESTAURANTS, MOCK_COUPONS } from '../data/catalog';
 import { generatePreloadedChiralaRestaurants, CHIRALA_TOP13_FOOD_ITEMS } from '../data/chiralaPartners';
@@ -57,16 +57,25 @@ interface AppContextProps {
   
   // Authentication & Profile
   user: User | null;
+  language: AppLanguage;
+  setLanguage: (lang: AppLanguage) => void;
   otpCode: string;
   setOtpCode: (code: string) => void;
   loginWithPhone: (phone: string, role?: string) => Promise<boolean>;
   verifyOtpAndLogin: (phone: string, otp: string, role?: string) => Promise<boolean>;
-  completeUserProfile: (name: string, email: string, address: Address) => void;
-  updateUserProfile: (name: string, email: string, avatar?: string, phone?: string) => void;
+  completeUserProfile: (name: string, email: string, address: Address, preferredLanguage?: AppLanguage) => void;
+  updateUserProfile: (name: string, email: string, avatar?: string, phone?: string, addresses?: Address[], preferredLanguage?: AppLanguage) => void;
   logoutUser: () => void;
   updateUserAddresses: (addresses: Address[]) => void;
   currentAddress: Address | null;
   setCurrentAddress: (address: Address | null) => void;
+
+  // Admin-Only Referral Points Management
+  referralSettings: ReferralSettings;
+  updateReferralSettings: (settings: Partial<ReferralSettings>) => boolean;
+  resetAllReferralPoints: () => boolean;
+  resetUserReferralPoints: (userPhone: string) => boolean;
+  adjustUserReferralPoints: (userPhone: string, newPointsAmount: number) => boolean;
 
   // Food Catalog & Searches
   foodCatalog: FoodItem[];
@@ -159,6 +168,7 @@ interface AppContextProps {
   updateFranchiseStatus: (id: string, status: FranchiseApplication['status']) => void;
 
   // Admin & Super Admin Controls
+  isAdmin: boolean;
   isSuperAdmin: boolean;
   isSuperAdminAuthenticated: boolean;
   verifySuperAdminOtp: (otp: string) => boolean;
@@ -404,11 +414,129 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [otpCode, setOtpCode] = useState<string>('5555'); // Default simulated auto-filled OTP
 
   const checkSuperAdminPermission = (actionName: string): boolean => {
-    if (user?.phone !== '9063692135' && user?.phone !== '8328355812') {
-      alert(`Access Denied: Only Super Admin has authority to perform: "${actionName}".`);
+    if (user?.phone !== '9063692135') {
+      alert(`Access Denied: Only Super Admin (9063692135) has authority to perform: "${actionName}".`);
       return false;
     }
     return true;
+  };
+
+  // App Language State (English, Telugu, Hindi)
+  const [language, setLanguageState] = useState<AppLanguage>(() => {
+    const saved = localStorage.getItem('nuvvo_app_language') as AppLanguage;
+    if (saved === 'en' || saved === 'te' || saved === 'hi') return saved;
+    const userLang = safeParse<User | null>('nuvvo_user', null)?.preferredLanguage;
+    if (userLang === 'en' || userLang === 'te' || userLang === 'hi') return userLang;
+    return 'te'; // Default to Telugu as requested in prompt
+  });
+
+  const setLanguage = (lang: AppLanguage) => {
+    setLanguageState(lang);
+    localStorage.setItem('nuvvo_app_language', lang);
+    if (user) {
+      setUser(prev => prev ? { ...prev, preferredLanguage: lang } : null);
+    }
+  };
+
+  // Admin-Only Referral Settings & Control
+  const [referralSettings, setReferralSettings] = useState<ReferralSettings>(() => {
+    return safeParse<ReferralSettings>('nuvvo_referral_settings', {
+      referrerBonusPoints: 150,
+      refereeBonusPoints: 100,
+      pointsToRupeeRatio: 1,
+      isReferralProgramActive: true
+    });
+  });
+
+  useEffect(() => {
+    localStorage.setItem('nuvvo_referral_settings', JSON.stringify(referralSettings));
+  }, [referralSettings]);
+
+  const updateReferralSettings = (settings: Partial<ReferralSettings>): boolean => {
+    if (!checkSuperAdminPermission('Change Referral Points Configuration')) {
+      return false;
+    }
+    setReferralSettings(prev => {
+      const updated = { ...prev, ...settings };
+      localStorage.setItem('nuvvo_referral_settings', JSON.stringify(updated));
+      return updated;
+    });
+    addAuditLog('Referral Settings Updated', `Super Admin updated referral rules: Referrer Bonus: ${settings.referrerBonusPoints ?? referralSettings.referrerBonusPoints}, Referee Bonus: ${settings.refereeBonusPoints ?? referralSettings.refereeBonusPoints}`);
+    return true;
+  };
+
+  const resetAllReferralPoints = (): boolean => {
+    if (!checkSuperAdminPermission('Reset All Users Referral Points')) {
+      return false;
+    }
+    try {
+      localStorage.setItem('nuvvo_referral_credits', '0');
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('nuvvo_registered_')) {
+          const userStr = localStorage.getItem(key);
+          if (userStr) {
+            try {
+              const u = JSON.parse(userStr);
+              u.referralCredits = 0;
+              localStorage.setItem(key, JSON.stringify(u));
+            } catch (e) {}
+          }
+        }
+      }
+      setUser(prev => prev ? { ...prev, referralCredits: 0 } : null);
+      addAuditLog('Referral Points Reset', 'Super Admin reset all customer referral points to zero.');
+      return true;
+    } catch (err) {
+      console.error('Error resetting referral points:', err);
+      return false;
+    }
+  };
+
+  const resetUserReferralPoints = (userPhone: string): boolean => {
+    if (!checkSuperAdminPermission(`Reset Referral Points for User ${userPhone}`)) {
+      return false;
+    }
+    try {
+      const stored = localStorage.getItem(`nuvvo_registered_${userPhone}`);
+      if (stored) {
+        const u = JSON.parse(stored);
+        u.referralCredits = 0;
+        localStorage.setItem(`nuvvo_registered_${userPhone}`, JSON.stringify(u));
+      }
+      if (user?.phone === userPhone) {
+        localStorage.setItem('nuvvo_referral_credits', '0');
+        setUser(prev => prev ? { ...prev, referralCredits: 0 } : null);
+      }
+      addAuditLog('User Referral Points Reset', `Super Admin reset referral credits for user ${userPhone}`);
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  };
+
+  const adjustUserReferralPoints = (userPhone: string, newPointsAmount: number): boolean => {
+    if (!checkSuperAdminPermission(`Adjust Referral Points for User ${userPhone}`)) {
+      return false;
+    }
+    try {
+      const stored = localStorage.getItem(`nuvvo_registered_${userPhone}`);
+      if (stored) {
+        const u = JSON.parse(stored);
+        u.referralCredits = newPointsAmount;
+        localStorage.setItem(`nuvvo_registered_${userPhone}`, JSON.stringify(u));
+      }
+      if (user?.phone === userPhone) {
+        localStorage.setItem('nuvvo_referral_credits', newPointsAmount.toString());
+        setUser(prev => prev ? { ...prev, referralCredits: newPointsAmount } : null);
+      }
+      addAuditLog('User Referral Points Adjusted', `Super Admin adjusted referral points to ${newPointsAmount} for ${userPhone}`);
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
   };
 
   // Address
@@ -807,7 +935,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Admin and Super Admin
   const [isSuperAdminAuthenticated, setSuperAdminAuthenticated] = useState<boolean>(false);
-  const isSuperAdmin = user?.phone === '9063692135' || user?.phone === '8328355812' || user?.role === 'Super Admin';
   const [designatedAdmins, setDesignatedAdmins] = useState<DesignatedAdmin[]>(() => {
     return safeParse<DesignatedAdmin[]>('nuvvo_designated_admins', [
       {
@@ -884,6 +1011,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     ]);
   });
+
+  // Strict admin authorization: exclusively granted ONLY to mobile 9063692135
+  const isSuperAdmin = Boolean(user?.phone === '9063692135');
+  const isAdmin = Boolean(user?.phone === '9063692135');
   const [couponsList, setCouponsList] = useState<Coupon[]>(() => {
     return safeParse<Coupon[]>('nuvvo_coupons', MOCK_COUPONS);
   });
@@ -1929,15 +2060,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     let resolvedRole: any = 'Customer';
-    // Strict exclusive Super Admin / Admin hook based strictly on user requirement
-    if (phone === '9063692135' || phone === '8328355812') {
+    // Strict exclusive Super Admin & Admin access: ONLY mobile 9063692135
+    if (phone === '9063692135') {
       resolvedRole = 'Super Admin';
     } else if (role === 'Delivery Partner') {
       resolvedRole = 'Delivery Partner';
     } else if (role === 'Franchise') {
       resolvedRole = 'Franchise';
-    } else if (role === 'Admin') {
-      resolvedRole = 'Admin';
+    } else {
+      resolvedRole = 'Customer';
     }
 
     const existingUserStr = localStorage.getItem(`nuvvo_registered_${phone}`);
@@ -1990,31 +2121,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       email,
       addresses: [address],
       currentAddressId: address.id,
-      isProfileComplete: true
+      isProfileComplete: true,
+      preferredLanguage: preferredLanguage || language
     };
+    if (preferredLanguage) {
+      setLanguage(preferredLanguage);
+    }
     setUser(completedUser);
     localStorage.setItem(`nuvvo_registered_${user.phone}`, JSON.stringify(completedUser));
+    localStorage.setItem('nuvvo_user', JSON.stringify(completedUser));
     setCurrentAddress(address);
     addAuditLog('Profile Created', `User registration profile submitted under credentials name ${name}`);
   };
 
-  const updateUserProfile = (name: string, email: string, avatar?: string, phone?: string) => {
-    if (!user) return;
-    const oldPhone = user.phone;
-    const newPhone = phone || user.phone;
-    const updatedUser: User = {
-      ...user,
-      name,
-      email,
-      phone: newPhone,
-      avatar: avatar !== undefined ? avatar : user.avatar
-    };
-    setUser(updatedUser);
-    localStorage.setItem(`nuvvo_registered_${newPhone}`, JSON.stringify(updatedUser));
-    if (oldPhone !== newPhone) {
-      localStorage.removeItem(`nuvvo_registered_${oldPhone}`);
-    }
-    addAuditLog('Profile Updated', `User profile demographics and avatar updated internally. (Name: ${name}, Phone: ${newPhone})`);
+  const updateUserProfile = (name: string, email: string, avatar?: string, phone?: string, addresses?: Address[], preferredLanguage?: AppLanguage) => {
+    setUser(prevUser => {
+      const base = prevUser || {
+        id: `user_${Date.now()}`,
+        name,
+        email,
+        phone: phone || '9063692135',
+        role: (phone === '9063692135') ? 'Super Admin' : 'Customer',
+        addresses: addresses || [],
+        favoriteFoods: [],
+        favoriteRestaurants: [],
+        isProfileComplete: true,
+        createdAt: new Date().toISOString()
+      };
+      const oldPhone = base.phone;
+      const newPhone = phone || base.phone;
+      const updatedUser: User = {
+        ...base,
+        name: name.trim(),
+        email: email.trim(),
+        phone: newPhone,
+        avatar: avatar !== undefined ? avatar : base.avatar,
+        addresses: addresses !== undefined ? addresses : base.addresses,
+        preferredLanguage: preferredLanguage || base.preferredLanguage || language
+      };
+      if (preferredLanguage) {
+        setLanguageState(preferredLanguage);
+        localStorage.setItem('nuvvo_app_language', preferredLanguage);
+      }
+      try {
+        localStorage.setItem(`nuvvo_registered_${newPhone}`, JSON.stringify(updatedUser));
+        localStorage.setItem('nuvvo_user', JSON.stringify(updatedUser));
+        if (oldPhone && oldPhone !== newPhone) {
+          localStorage.removeItem(`nuvvo_registered_${oldPhone}`);
+        }
+      } catch (err) {
+        console.error('Failed to write user to localStorage:', err);
+      }
+      return updatedUser;
+    });
+    addAuditLog('Profile Updated', `User profile updated (Name: ${name}, Email: ${email})`);
   };
 
   const logoutUser = () => {
@@ -2028,10 +2188,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUserAddresses = (addresses: Address[]) => {
-    if (!user) return;
-    const updated = { ...user, addresses };
-    setUser(updated);
-    localStorage.setItem(`nuvvo_registered_${user.phone}`, JSON.stringify(updated));
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      const updated = { ...prevUser, addresses };
+      try {
+        localStorage.setItem(`nuvvo_registered_${prevUser.phone}`, JSON.stringify(updated));
+        localStorage.setItem('nuvvo_user', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to write addresses to localStorage:', err);
+      }
+      return updated;
+    });
   };
 
   // Favorites
@@ -2190,6 +2357,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const paymentDetailsObj = typeof phonePeNoOrDetails === 'object' ? phonePeNoOrDetails : undefined;
     const maskedOrPhone = isPhonePeStr ? phonePeNoOrDetails : (paymentDetailsObj?.maskedInfo || paymentDetailsObj?.provider || undefined);
 
+    const defaultRider = deliveryPartners.find(p => p.id === 'partner_suresh') || deliveryPartners[0];
+
     const newOrder: Order = {
       id: orderId,
       customerId: user.id,
@@ -2216,6 +2385,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       trackingHistory: [
         { status: 'accepted', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
       ],
+      deliveryPartnerId: defaultRider?.id || 'partner_suresh',
+      deliveryPartnerName: defaultRider?.name || 'Suresh Kumar',
+      deliveryPartnerPhone: defaultRider?.phone || '9876543210',
+      deliveryPartnerAvatar: defaultRider?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      deliveryPartnerVehicle: `${defaultRider?.vehicleType || 'Bike'} (${defaultRider?.bikeNumber || 'AP 39 TB 4821'})`,
+      deliveryPartnerRating: defaultRider?.rating || 4.8,
+      deliveryPartnerLocation: defaultRider?.currentLocation || { lat: 15.8252, lng: 80.3541, addressLabel: 'Chirala Main Road' },
       scheduledTime,
       pointsEarned: earnedPoints,
       pointsRedeemed: pointsToRedeem > 0 ? pointsToRedeem : undefined
@@ -2407,6 +2583,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Real-Time Notification Multi-Persona Interceptor
     const subOrderId = orderId.replace('order_', '');
+    const defaultRider = deliveryPartners.find(p => p.id === 'partner_suresh') || deliveryPartners[0];
+
     if (status === 'accepted') {
       // Customer: Order Accepted
       triggerPushNotification(
@@ -2446,12 +2624,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         'riders'
       );
     } else if (status === 'picked') {
-      // Customer: Rider Assigned / Food Ready / Collected
+      const activeMatch = orders.find(o => o.id === orderId) || activeTrackingOrder;
+      const riderName = activeMatch?.deliveryPartnerName || defaultRider?.name || 'Suresh Kumar';
+      const riderPhone = activeMatch?.deliveryPartnerPhone || defaultRider?.phone || '9876543210';
+      const riderVehicle = activeMatch?.deliveryPartnerVehicle || `${defaultRider?.vehicleType || 'Bike'} (${defaultRider?.bikeNumber || 'AP 39 TB 4821'})`;
+
+      // Customer: Delivery Started with Delivery Boy Details & Phone Number
       triggerPushNotification(
         orderId,
         'picked',
-        '🚴 Rider Assigned & Food Ready!',
-        `Your items are freshly sealed! Our professional delivery partner has collected "${orderDescription}".`,
+        `🛵 Delivery Started! ${riderName} is on the way`,
+        `Delivery partner ${riderName} (📞 +91 ${riderPhone}) has picked up your food order. Vehicle: ${riderVehicle}. Driving to your doorstep!`,
+        false,
+        'customers'
+      );
+      // Customer: Live Location Alert
+      triggerPushNotification(
+        orderId + '_live_loc',
+        'picked',
+        `📍 Live Location Active: ${riderName} en route`,
+        `Live GPS tracking activated. Partner ${riderName} (📞 +91 ${riderPhone}) is navigating towards your location in Chirala.`,
         false,
         'customers'
       );
@@ -2460,17 +2652,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         orderId,
         'picked',
         '✅ Delivery Route Assigned',
-        `You have been successfully assigned to order #${subOrderId}! Head to vendor for swift pick up.`,
+        `You have been successfully assigned to order #${subOrderId}! Head to customer address.`,
         false,
         'riders'
       );
     } else if (status === 'on_the_way') {
-      // Customer: Rider On The Way
+      const activeMatch = orders.find(o => o.id === orderId) || activeTrackingOrder;
+      const riderName = activeMatch?.deliveryPartnerName || defaultRider?.name || 'Suresh Kumar';
+      const riderPhone = activeMatch?.deliveryPartnerPhone || defaultRider?.phone || '9876543210';
+
+      // Customer: Rider On The Way with Live Location
       triggerPushNotification(
         orderId,
         'on_the_way',
-        '🚀 Rider is On The Way!',
-        `Rider partner is driving towards your location with "${orderDescription}". Coming in hot!`,
+        `🚀 Delivery in Progress: ${riderName} Arriving Soon!`,
+        `${riderName} (📞 +91 ${riderPhone}) is cruising towards your destination with "${orderDescription}". Keep your phone handy!`,
+        false,
+        'customers'
+      );
+      // Customer: Real-time Live GPS broadcast notification
+      triggerPushNotification(
+        orderId + '_live_loc_ontheway',
+        'on_the_way',
+        `📍 Live GPS Signal: ${riderName} is 1.2 km away`,
+        `Partner location: Near Chirala Trunk Road / RTC Bus Stand. Tap to view live beacon and direct contact buttons!`,
         false,
         'customers'
       );
@@ -3321,7 +3526,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleDeliveryPartnerAvailability = (id: string) => {
-    if (user?.phone !== '9063692135' && user?.phone !== '8328355812' && deliveryPartner?.id !== id) {
+    if (user?.phone !== '9063692135' && deliveryPartner?.id !== id) {
       if (!checkSuperAdminPermission('Toggle Delivery Partner Availability')) return;
     }
     setDeliveryPartners(prev => {
@@ -3759,7 +3964,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentTheme, setThemeId, themesList,
       cartSuccessAnimation, setCartSuccessAnimation,
       isOffline,
-      user, otpCode, setOtpCode, loginWithPhone, verifyOtpAndLogin, completeUserProfile, updateUserProfile, logoutUser, updateUserAddresses,
+      user, language, setLanguage, otpCode, setOtpCode, loginWithPhone, verifyOtpAndLogin, completeUserProfile, updateUserProfile, logoutUser, updateUserAddresses,
+      referralSettings, updateReferralSettings, resetAllReferralPoints, resetUserReferralPoints, adjustUserReferralPoints,
       currentAddress, setCurrentAddress,
       foodCatalog: foodCatalogList, addFoodItem, updateFoodItem, restaurants: restaurantsList, searchQuery, setSearchQuery,
       favoriteFoods, favoriteRestaurants, toggleFavoriteFood, toggleFavoriteRestaurant,
@@ -3774,7 +3980,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deliveryPartners, addDeliveryPartner, removeDeliveryPartner, toggleDeliveryPartnerAvailability, updateRiderStatus,
       incentiveSettings, updateIncentiveSettings, approvePayout, requestPayout, addRiderEarningRecord,
       franchiseApplications, submitFranchiseForm, updateFranchiseStatus,
-      isSuperAdmin, isSuperAdminAuthenticated, verifySuperAdminOtp, setSuperAdminAuthenticated,
+      isAdmin, isSuperAdmin, isSuperAdminAuthenticated, verifySuperAdminOtp, setSuperAdminAuthenticated,
       authenticateSuperAdmin, wipeAllData, clearSystemCache,
       clearStats, seedSampleOrders,
       couponsList, addNewCoupon, deleteCoupon, clearAllCoupons, resetDefaultCoupons,

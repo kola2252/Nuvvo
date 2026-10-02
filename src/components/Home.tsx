@@ -27,11 +27,11 @@ export default function Home() {
     favoriteFoods, favoriteRestaurants, toggleFavoriteFood, toggleFavoriteRestaurant,
     setSelectedFoodItem, setCurrentPage, currentAddress,
     notifications, markNotificationAsRead, clearAllNotifications, requestNotificationPermission, notificationPermission, deleteNotification,
-    orders,
+    orders, activeTrackingOrder,
     banners, addAuditLog, applyCouponCode, appliedCoupon,
     getRestaurantOpenStatus, restaurantReviews, currentTheme,
     clickToWhatsAppFoodBooking,
-    pageHistory, goBack, closePage
+    pageHistory, goBack, closePage, isAdmin
   } = useApp();
 
   const [localSearch, setLocalSearch] = useState('');
@@ -1327,7 +1327,7 @@ export default function Home() {
             {darkMode ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
           </button>
           
-          {(user?.phone === '9063692135' || user?.phone === '8328355812' || user?.role === 'Super Admin') && (
+          {user?.phone === '9063692135' && (
             <button
               onClick={() => setCurrentPage('super-admin')}
               aria-label="Access Super Admin Master Control Panel"
@@ -1375,7 +1375,7 @@ export default function Home() {
                   { id: 'customers', label: 'Customer' },
                   { id: 'riders', label: 'Rider' },
                   { id: 'restaurants', label: 'Kitchen' },
-                  { id: 'admin', label: 'Admin' },
+                  ...(isAdmin ? [{ id: 'admin', label: 'Admin' }] : []),
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -1520,6 +1520,53 @@ export default function Home() {
 
       <div className="p-4 space-y-6 max-w-7xl mx-auto">
         
+        {/* ACTIVE LIVE DELIVERY STATUS BANNER */}
+        {activeTrackingOrder && activeTrackingOrder.status !== 'delivered' && activeTrackingOrder.status !== 'cancelled' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => setCurrentPage('tracking')}
+            className="p-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-3xl shadow-lg shadow-emerald-600/20 cursor-pointer active:scale-99 transition-all flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="relative shrink-0">
+                <span className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl">
+                  🛵
+                </span>
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-300"></span>
+                </span>
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[9.5px] uppercase font-mono font-black bg-black/25 px-2 py-0.5 rounded-full tracking-wider">
+                    {activeTrackingOrder.status === 'picked' || activeTrackingOrder.status === 'on_the_way' ? 'Live Delivery Active' : 'Order in Progress'}
+                  </span>
+                  <span className="text-[10px] text-emerald-100 font-bold">
+                    ETA: {activeTrackingOrder.eta || 20}m
+                  </span>
+                </div>
+                <p className="text-xs font-black truncate mt-0.5">
+                  {activeTrackingOrder.deliveryPartnerName ? (
+                    <>Partner: <span className="underline">{activeTrackingOrder.deliveryPartnerName}</span> (📞 {activeTrackingOrder.deliveryPartnerPhone || '9876543210'})</>
+                  ) : (
+                    <>Order #{activeTrackingOrder.id.slice(-6).toUpperCase()} is on the way</>
+                  )}
+                </p>
+                <p className="text-[10.5px] text-emerald-100/90 truncate flex items-center gap-1">
+                  <MapPin className="w-3 h-3 shrink-0" />
+                  <span>Live GPS Tracking • Tap to call delivery boy or view live location</span>
+                </p>
+              </div>
+            </div>
+
+            <span className="p-2 bg-white/15 hover:bg-white/25 rounded-2xl shrink-0 transition flex items-center gap-1 text-xs font-black">
+              Track <ChevronRight className="w-4 h-4" />
+            </span>
+          </motion.div>
+        )}
+
         {/* Global Search Input Field at the Top of Home Screen */}
         <div className="relative group">
           <label htmlFor="global-search-input" className="sr-only">

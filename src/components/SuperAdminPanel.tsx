@@ -303,7 +303,7 @@ export default function SuperAdminPanel() {
   }, [trackingTimerActive, selectedRiderForTracking]);
 
   // Strict Phone authentication validation
-  if (user?.phone !== '9063692135' && user?.phone !== '8328355812') {
+  if (user?.phone !== '9063692135') {
     return (
       <div id="super-admin-denied" className="min-h-screen bg-rose-50/10 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center pb-24 duration-300">
         <div className="w-20 h-20 bg-rose-100 dark:bg-rose-950/20 text-rose-500 rounded-full flex items-center justify-center mb-4 border border-rose-200">
@@ -319,7 +319,7 @@ export default function SuperAdminPanel() {
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode === '9063' || otpCode === '8328' || otpCode === '5555') {
+    if (otpCode === '9063' || otpCode === '5555') {
       authenticateSuperAdmin();
       setErrorMsg('');
     } else {

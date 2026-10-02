@@ -21,7 +21,7 @@ export default function AdminPanel() {
     clearAllCoupons, resetDefaultCoupons, clearStats, seedSampleOrders,
     banners, deleteBanner, clearAllBanners, resetDefaultBanners, enableBanner,
     addFoodItem, updateFoodItem, franchiseApplications, deliveryPartner, user, updateFranchiseStatus,
-    restaurants, registerNewRestaurantRequest, approveRestaurant, isSuperAdmin, setCurrentPage
+    restaurants, registerNewRestaurantRequest, approveRestaurant, isAdmin, isSuperAdmin, setCurrentPage
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'analytics' | 'catalog' | 'coupons' | 'franchise'>('analytics');
@@ -175,6 +175,29 @@ export default function AdminPanel() {
     setNewCouponDesc('');
     alert('Coupon code live authorized!');
   };
+
+  // Strict Admin authorization check: customers must never open the Admin Panel
+  if (!isAdmin) {
+    return (
+      <div id="admin-access-denied" className="min-h-screen bg-slate-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center pb-24 duration-300">
+        <div className="w-20 h-20 bg-rose-100 dark:bg-rose-950/30 text-rose-600 rounded-full flex items-center justify-center mb-4 border border-rose-200 dark:border-rose-900/50 shadow-lg">
+          <ShieldAlert className="w-10 h-10" />
+        </div>
+        <h3 className="text-xl font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+          Admin Access Restricted
+        </h3>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mt-2.5 leading-relaxed">
+          The Admin Portal is strictly reserved for authorized administrators and operations managers. Customers cannot access this terminal.
+        </p>
+        <button
+          onClick={() => setCurrentPage('home')}
+          className="mt-6 px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-md transition active:scale-95 cursor-pointer"
+        >
+          Return to Food Ordering
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 pb-24 duration-300">
@@ -1585,7 +1608,7 @@ export default function AdminPanel() {
                           </div>
                         )}
 
-                        {/* SUPER ADMIN STATUS CONTROLS - BLOCK CHANGES EXCEPT 8328355812 */}
+                        {/* SUPER ADMIN STATUS CONTROLS - EXCLUSIVELY LOCKED TO 9063692135 */}
                         <div className="border-t pt-3 flex flex-wrap gap-1.5 items-center justify-between">
                           <div className="flex gap-1.5">
                             <a href={`tel:${app.phone}`} className="p-2 bg-slate-100 hover:bg-slate-200 text-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl flex items-center justify-center">

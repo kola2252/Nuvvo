@@ -174,8 +174,30 @@ export default function TrackingScreen() {
     clickToWhatsAppSupport, changeOrderStatus, setCurrentPage,
     restaurants, submitRestaurantReview, user,
     pageHistory, goBack, closePage,
-    notificationPermission, requestNotificationPermission
+    notificationPermission, requestNotificationPermission,
+    deliveryPartners
   } = useApp();
+
+  const assignedPartner = deliveryPartners?.find(p => p.id === activeTrackingOrder?.deliveryPartnerId) || 
+    deliveryPartners?.find(p => p.isApproved) || {
+      id: 'partner_suresh',
+      name: 'Suresh Kumar',
+      phone: '9876543210',
+      whatsAppPhone: '9876543210',
+      vehicleType: 'Bike',
+      bikeNumber: 'AP 39 TB 4821',
+      rating: 4.8,
+      completedOrdersCount: 22,
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      currentLocation: { lat: 15.8252, lng: 80.3541, addressLabel: 'Chirala Main Road, Near Clock Tower' }
+    };
+
+  const riderName = activeTrackingOrder?.deliveryPartnerName || assignedPartner.name;
+  const riderPhone = activeTrackingOrder?.deliveryPartnerPhone || assignedPartner.phone;
+  const riderVehicle = activeTrackingOrder?.deliveryPartnerVehicle || `${assignedPartner.vehicleType || 'Bike'} (${assignedPartner.bikeNumber || 'AP 39 TB 4821'})`;
+  const riderAvatar = activeTrackingOrder?.deliveryPartnerAvatar || assignedPartner.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80';
+  const riderRating = activeTrackingOrder?.deliveryPartnerRating || assignedPartner.rating || 4.8;
+  const isDeliveryStarted = ['picked', 'on_the_way', 'delivered'].includes(activeTrackingOrder?.status || '');
 
   const restaurantId = activeTrackingOrder?.items[0]?.foodItem?.restaurantId || 'rest_1';
   const restaurantName = restaurants.find(r => r.id === restaurantId)?.name || 'Nuvvo Kitchens';
@@ -709,6 +731,124 @@ export default function TrackingScreen() {
 
       <div className="p-4 max-w-md mx-auto space-y-4">
         
+        {/* DELIVERY BOY DETAILS & LIVE LOCATION CARD (VISIBLE PROMINENTLY UPON DELIVERY START) */}
+        <div 
+          id="delivery-boy-details-card" 
+          className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-3xl p-5 shadow-lg relative overflow-hidden transition-all duration-300"
+        >
+          {/* Decorative glowing gradient backdrop */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+
+          {/* Card Header Status Indicator */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isDeliveryStarted ? 'bg-emerald-400' : 'bg-orange-400'} opacity-75`}></span>
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${isDeliveryStarted ? 'bg-emerald-500' : 'bg-orange-500'}`}></span>
+              </span>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-mono block">
+                  {isDeliveryStarted ? '🛵 DELIVERY STARTED • IN TRANSIT' : '👨‍🍳 KITCHEN PREPARING • RIDER ASSIGNED'}
+                </span>
+                <h3 className="text-xs font-black text-zinc-900 dark:text-zinc-50 leading-tight">
+                  Delivery Partner Executive
+                </h3>
+              </div>
+            </div>
+
+            <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-600 dark:text-zinc-300">
+              ETA: {etaRemaining} Mins
+            </span>
+          </div>
+
+          {/* Rider Profile Row */}
+          <div className="flex items-center gap-3.5 pt-3">
+            <div className="relative shrink-0">
+              <img 
+                src={riderAvatar} 
+                alt={`${riderName} Delivery Partner`}
+                className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-sm"
+              />
+              <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 border-2 border-white dark:border-zinc-900" title="Verified Delivery Partner">
+                <ShieldCheck className="w-3 h-3" />
+              </span>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-50 truncate">
+                  {riderName}
+                </h4>
+                <span className="text-[9px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.2 rounded font-bold">
+                  Verified Rider
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+                <span className="flex items-center gap-0.5 text-amber-500 font-bold">
+                  <Star className="w-3 h-3 fill-amber-500" /> {riderRating}
+                </span>
+                <span>•</span>
+                <span className="truncate">{riderVehicle}</span>
+              </div>
+
+              {/* Direct Phone Number Display with Call Link */}
+              <div className="flex items-center gap-1.5 mt-1 text-xs">
+                <span className="text-zinc-400 font-bold text-[10px] uppercase">Rider Phone:</span>
+                <a 
+                  href={`tel:${riderPhone}`}
+                  className="font-mono font-black text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-200/60 dark:border-emerald-800/40"
+                  title="Click to Call Delivery Boy"
+                >
+                  <Phone className="w-3 h-3" /> +91 {riderPhone}
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Contact Action Buttons */}
+          <div className="grid grid-cols-2 gap-2 pt-3">
+            <a 
+              href={`tel:${riderPhone}`}
+              className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer text-center"
+              title={`Call ${riderName}`}
+            >
+              <Phone className="w-4 h-4" /> Call Delivery Boy
+            </a>
+
+            <a 
+              href={`https://wa.me/91${riderPhone}?text=Hi%20${encodeURIComponent(riderName)},%20I%20am%20tracking%20my%20Nuvvo%20food%20order.`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-black text-xs py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer text-center"
+              title="Chat on WhatsApp"
+            >
+              <MessageSquare className="w-4 h-4" /> WhatsApp Rider
+            </a>
+          </div>
+
+          {/* Live Location GPS Status Bar */}
+          <div className="mt-3 p-3 bg-slate-50 dark:bg-zinc-850/70 border border-slate-100 dark:border-zinc-800 rounded-2xl space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-orange-500 flex items-center gap-1">
+                <Radio className="w-3 h-3 animate-pulse text-orange-500" /> Live Location Beacon
+              </span>
+              <span className="text-[9px] font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-bold">
+                {currentSpeed} km/h • 5G GPS
+              </span>
+            </div>
+
+            <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5 leading-snug">
+              <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+              <span>Chirala Trunk Road, Near RTC Bus Stand (approx. {simulatedDistance} km away)</span>
+            </p>
+
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
+              Live coordinates streaming: <span className="font-mono text-zinc-700 dark:text-zinc-300 font-bold">{jitterCoords.lat}, {jitterCoords.lng}</span>. Delivery partner is en route to your address!
+            </p>
+          </div>
+        </div>
+
         {/* PREMIUM MAP VIEWPORT WITH GOOGLE MAPS API INTEGRATION */}
         <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-3xl p-4 shadow-md overflow-hidden relative">
           <div className="flex justify-between items-center mb-3">

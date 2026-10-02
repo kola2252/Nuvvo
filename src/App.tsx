@@ -26,7 +26,7 @@ const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const SuperAdminPanel = lazy(() => import('./components/SuperAdminPanel'));
 
 export default function App() {
-  const { user, currentPage, selectedFoodItem, notifications, markNotificationAsRead, setCurrentPage, isOffline, cartSuccessAnimation } = useApp();
+  const { user, currentPage, selectedFoodItem, notifications, markNotificationAsRead, setCurrentPage, isOffline, cartSuccessAnimation, isAdmin, isSuperAdmin } = useApp();
   const [activeToast, setActiveToast] = useState<any>(null);
   
   // Fast splash screen: skip if already seen this session, else quick 650ms intro
@@ -94,8 +94,14 @@ export default function App() {
       case 'franchise':
         return <FranchiseScreen />;
       case 'admin':
+        if (!isAdmin) {
+          return <Home />;
+        }
         return <AdminPanel />;
       case 'super-admin':
+        if (!isSuperAdmin) {
+          return <Home />;
+        }
         return <SuperAdminPanel />;
       case 'delivery-options':
         return <DeliveryOptionsScreen />;
@@ -161,9 +167,13 @@ export default function App() {
             <p className="text-sm font-extrabold text-zinc-900 dark:text-zinc-100 mt-1">
               {activeToast.title}
             </p>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
+            <p className="text-[11px] text-zinc-650 dark:text-zinc-350 mt-0.5 leading-relaxed font-medium">
               {activeToast.body}
             </p>
+            <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between text-[10px] font-black text-orange-600 dark:text-orange-400">
+              <span className="flex items-center gap-1">📍 Tap to Track Live Location</span>
+              <span>View Map ➔</span>
+            </div>
           </div>
         </motion.div>
       )}
